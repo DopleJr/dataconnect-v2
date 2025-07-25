@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -15,12 +16,55 @@ import {
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isAutoHidden, setIsAutoHidden] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState({
     inventory: false,
     inbound: false,
     outbound: false
   });
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
+  // Handle auto-hide functionality
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        if (!isCollapsed) {
+          setIsAutoHidden(true);
+        }
+      }
+    };
+
+    const handleMouseEnter = () => {
+      if (isAutoHidden) {
+        setIsAutoHidden(false);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (!isCollapsed) {
+        const timer = setTimeout(() => {
+          setIsAutoHidden(true);
+        }, 1000); // Auto-hide after 1 second of no interaction
+
+        return () => clearTimeout(timer);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    if (sidebarRef.current) {
+      sidebarRef.current.addEventListener('mouseenter', handleMouseEnter);
+      sidebarRef.current.addEventListener('mouseleave', handleMouseLeave);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (sidebarRef.current) {
+        sidebarRef.current.removeEventListener('mouseenter', handleMouseEnter);
+        sidebarRef.current.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, [isCollapsed, isAutoHidden]);
   const isActive = (path: string) => {
     return location.pathname === path ? 'bg-blue-700' : '';
   };
@@ -52,7 +96,7 @@ const Sidebar: React.FC = () => {
   };
 
   const renderSubmenu = (menuName: keyof typeof openSubmenus, items: typeof inventorySubmenuItems, Icon: React.ComponentType<any>) => {
-    if (isCollapsed) {
+    if (isCollapsed || isAutoHidden) {
       return (
         <li className="relative group" key={menuName}>
           <button
@@ -121,10 +165,17 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className={`bg-blue-600 text-white ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col transition-all duration-300`}>
-      <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'}`}>
+    <div 
+      ref={sidebarRef}
+      className={`bg-blue-600 text-white ${
+        isCollapsed ? 'w-16' : isAutoHidden ? 'w-16' : 'w-64'
+      } min-h-screen flex flex-col transition-all duration-300 ${
+        isAutoHidden ? 'shadow-lg z-10' : ''
+      }`}
+    >
+      <div className={`p-4 flex items-center ${isCollapsed || isAutoHidden ? 'justify-center' : 'space-x-2'}`}>
         <Database className="h-8 w-8" />
-        {!isCollapsed && <span className="text-xl font-bold">DataConnect</span>}
+        {!isCollapsed && !isAutoHidden && <span className="text-xl font-bold">DataConnect</span>}
       </div>
       
       <nav className="flex-1 p-4">
@@ -133,12 +184,12 @@ const Sidebar: React.FC = () => {
             <li key={item.path}>
               <Link
                 to={item.path}
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 ${isActive(item.path)}`}
-                title={isCollapsed ? item.label : ''}
+                className={`flex items-center ${isCollapsed || isAutoHidden ? 'justify-center' : 'space-x-3'} px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 ${isActive(item.path)}`}
+                title={isCollapsed || isAutoHidden ? item.label : ''}
                 aria-label={item.label}
               >
-                <item.icon className={`h-5 w-5 ${isCollapsed ? 'mx-auto' : ''}`} />
-                {!isCollapsed && <span>{item.label}</span>}
+                <item.icon className={`h-5 w-5 ${isCollapsed || isAutoHidden ? 'mx-auto' : ''}`} />
+                {!isCollapsed && !isAutoHidden && <span>{item.label}</span>}
               </Link>
             </li>
           ))}
@@ -150,11 +201,14 @@ const Sidebar: React.FC = () => {
       </nav>
 
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => {
+          setIsCollapsed(!isCollapsed);
+          setIsAutoHidden(false);
+        }}
         className="p-4 hover:bg-blue-700 transition-colors duration-200 flex justify-center"
         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        {isCollapsed ? (
+        {isCollapsed || isAutoHidden ? (
           <ChevronRight className="h-5 w-5" />
         ) : (
           <ChevronLeft className="h-5 w-5" />
