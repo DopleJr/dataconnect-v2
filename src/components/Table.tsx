@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
 import { getAllProducts } from '../services/api';
 import toast from 'react-hot-toast';
+import AdvancedSearch from './AdvancedSearch';
+import TableFilter from './TableFilter';
 
 interface Column {
   key: string;
   label: string;
+}
+
+interface SearchCondition {
+  id: string;
+  field: string;
+  operation: string;
+  value: string;
+  boolean: 'AND' | 'OR';
 }
 
 interface TableProps {
@@ -39,47 +47,78 @@ const TableSkeleton = ({ columns }: { columns: Column[] }) => (
 const ROWS_PER_SHEET = 500000;
 
 const Table: React.FC<TableProps> = ({ columns, title, type }) => {
-  const [data, setData] = useState<any[]>([]);
+  const [allData, setAllData] = useState<any[]>([]);
+  const [filteredData, setFilteredData] = useState<any[]>([]);
+  const [displayData, setDisplayData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
-  const [dbConnected, setDbConnected] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = async (searchConditions: SearchCondition[] = []) => {
     try {
       setLoading(true);
+      
+      if (searchConditions.length === 0 && !hasSearched) {
+        // No search conditions and haven't searched yet - don't load data
+        setAllData([]);
+        setFilteredData([]);
+        setDisplayData([]);
+        return;
+      }
+
       const response = await getAllProducts({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        startDate: startDate?.toISOString(),
-        endDate: endDate?.toISOString(),
+        page: 1,
+        limit: 10000000, // Load all data
+        searchConditions,
         type
       });
 
-      setData(response.data || []);
-      setTotal(response.total || 0);
-      setTotalPages(response.totalPages || 1);
-      setDbConnected(true);
+      const data = response.data || [];
+      setAllData(data);
+      setFilteredData(data);
+      setDisplayData(data);
+      setHasSearched(true);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setData([]);
-      setDbConnected(false);
+      setAllData([]);
+      setFilteredData([]);
+      setDisplayData([]);
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleAdvancedSearch = (conditions: SearchCondition[]) => {
+    setCurrentPage(1);
+    fetchData(conditions);
+  };
+
+  const handleClearSearch = () => {
+    setAllData([]);
+    setFilteredData([]);
+    setDisplayData([]);
+    setHasSearched(false);
+    setCurrentPage(1);
+  };
+
+  const handleFilteredDataChange = (filtered: any[]) => {
+    setFilteredData(filtered);
+    setCurrentPage(1);
+  };
+
+  // Calculate pagination for filtered data
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
   useEffect(() => {
-    fetchData();
-  }, [currentPage, itemsPerPage, searchTerm, startDate, endDate, type]);
+    setDisplayData(paginatedData);
+  }, [filteredData, currentPage, itemsPerPage]);
 
   const calculateTimeRemaining = (startTime: number, progress: number): string => {
     if (progress === 0) return 'Calculating...';
@@ -99,17 +138,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       setExporting(true);
       const startTime = Date.now();
 
-      // Use totals for limit if available, otherwise use data length
-      const limit = 10000000;
-
-      const exportData = !dbConnected ? data : await getAllProducts({
-        page: 1,
-        limit: limit,
-        search: searchTerm,
-        startDate: startDate?.toISOString(),
-        endDate: endDate?.toISOString(),
-        type
-      }).then(res => res.data).catch(() => data);
+      const exportData = filteredData;
 
       if (!exportData || exportData.length === 0) {
         toast.error('No data available for export');
@@ -167,7 +196,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
             <div className="relative">
               <button
                 onClick={exportToXLSX}
-                disabled={exporting}
+                disabled={exporting || filteredData.length === 0}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
               >
                 <Download className="h-4 w-4 mr-2" />
@@ -197,53 +226,29 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          <AdvancedSearch
+            columns={columns}
+            onSearch={handleAdvancedSearch}
+            onClear={handleClearSearch}
+            isLoading={loading}
+          />
 
-            <div className="flex-1">
-              <DatePicker
-                selected={startDate}
-                onChange={(date) => {
-                  setStartDate(date);
-                  setCurrentPage(1);
-                }}
-                selectsStart
-                startDate={startDate}
-                endDate={endDate}
-                placeholderText="Start Date"
-                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                dateFormat="yyyy-MM-dd"
-              />
-            </div>
+          {hasSearched && allData.length > 0 && (
+            <TableFilter
+              columns={columns}
+              data={allData}
+              onFilteredDataChange={handleFilteredDataChange}
+            />
+          )}
 
-            <div className="flex-1">
-              <DatePicker
-                selected={endDate}
-                onChange={(date) => {
-                  setEndDate(date);
-                  setCurrentPage(1);
-                }}
-                selectsEnd
-                startDate={startDate}
-                endDate={endDate}
-                minDate={startDate}
-                placeholderText="End Date"
-                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                dateFormat="yyyy-MM-dd"
-              />
-            </div>
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>
+              {hasSearched ? (
+                <>Showing {filteredData.length} of {allData.length} total records</>
+              ) : (
+                'Use Advanced Search to load data'
+              )}
+            </span>
           </div>
         </div>
       </div>
@@ -267,14 +272,23 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               Array.from({ length: itemsPerPage }).map((_, index) => (
                 <TableSkeleton key={index} columns={columns} />
               ))
-            ) : data.length === 0 ? (
+            ) : !hasSearched ? (
+              <tr>
+                <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
+                  <div className="space-y-2">
+                    <p className="text-lg">Use Advanced Search to load data</p>
+                    <p className="text-sm">Configure your search criteria above to fetch and display data</p>
+                  </div>
+                </td>
+              </tr>
+            ) : displayData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-4 text-center text-gray-500">
-                  No data found
+                  {filteredData.length === 0 ? 'No data matches your search criteria' : 'No data found'}
                 </td>
               </tr>
             ) : (
-              data.map((row, index) => (
+              displayData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -307,27 +321,29 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
           <span className="text-sm text-gray-700">entries</span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1 || loading}
-            className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          
-          <span className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
-          </span>
-          
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages || loading}
-            className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
+        {hasSearched && (
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1 || loading}
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            
+            <span className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || loading}
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

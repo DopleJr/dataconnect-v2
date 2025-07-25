@@ -1,6 +1,14 @@
 import axios from 'axios';
 import { Product, ProductFormData, DashboardStats } from '../types';
 
+interface SearchCondition {
+  id: string;
+  field: string;
+  operation: string;
+  value: string;
+  boolean: 'AND' | 'OR';
+}
+
 // Configuration matching your Express server setup
 const API_BASE_URLS = {
   localhost: 'http://localhost:3001/api',       // Matches PORT_LOCALHOST
@@ -67,17 +75,17 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 export const getAllProducts = async (params: { 
   page?: number; 
   limit?: number; 
-  search?: string; 
-  startDate?: string; 
-  endDate?: string; 
+  searchConditions?: SearchCondition[];
   type?: string; 
 }): Promise<{ data: Product[]; total: number; page: number; totalPages: number }> => {
   try {
-    if (params.search || (params.startDate && params.endDate)) {
-      const { startDate, endDate, ...queryParams } = params;
-      if (startDate && endDate) {
-        Object.assign(queryParams, { startDate, endDate });
-      }
+    if (params.searchConditions && params.searchConditions.length > 0) {
+      const queryParams = {
+        page: params.page,
+        limit: params.limit,
+        type: params.type,
+        searchConditions: JSON.stringify(params.searchConditions)
+      };
       const response = await api.get('/query', { params: queryParams });
       return response.data;
     } else {

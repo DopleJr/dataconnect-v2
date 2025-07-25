@@ -9,11 +9,18 @@ router.get('/', async (req, res, next) => {
     const { 
       page = 1, 
       limit = 10, 
-      search = '', 
-      startDate = '', 
-      endDate = '',
+      searchConditions = '',
       type = ''
     } = req.query;
+
+    // Parse search conditions
+    let conditions = [];
+    try {
+      conditions = searchConditions ? JSON.parse(searchConditions) : [];
+    } catch (error) {
+      console.error('Error parsing search conditions:', error);
+      conditions = [];
+    }
 
     let tableName = '';
     let joinClause = '';
@@ -611,108 +618,118 @@ router.get('/', async (req, res, next) => {
 
     // Build the WHERE clause
     const whereConditions = [];
-    const whereConditionsTrace = [];
-    const whereConditionsTrace2 = [];
     const queryParams = [];
-    let searchTerms = search.split(',').map(term => `'${term.trim()}'`).join(', '); // Format the search terms with single quotes and join them
-  
-    if (search &&
-      type === 'stockinventory' ||
-      type === 'stockinbound' ||
-      type === 'stockoutbound' 
-    ) {
-      whereConditions.push(
-        type === 'stockinventory' ? '(a.ITEM_ID LIKE ? OR b.DESCRIPTION LIKE ? OR a.ILPN_ID LIKE ? OR a.LOCATION_ID LIKE ?)' : 
-        type === 'stockinbound' ? '(inb.ITEM_ID LIKE ? OR inb.LPN_ID LIKE ? OR inb.INVENTORY_ATTRIBUTE1 LIKE ? OR inb.ASN_ID LIKE ?)':
-        type === 'stockoutbound' ? '(out1.ITEM_ID LIKE ? OR out1.OLPN_ID LIKE ? OR out2.ORIGINAL_ORDER_ID LIKE ? OR out2.EXT_DHL_CUSTOMER_SHIP_TO LIKE ?)' :
-        '');
-      queryParams.push(       
-        `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
-      //queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
-    }
-    if (search && type === 'tracetransaction'  ) {
-      whereConditionsTrace.push(
-        type === 'tracetransaction' ? `WHERE  transaction_data.item_id IN (${searchTerms})  ` : 
-          '');//transaction_data.transaction_date >= '2025-01-12T00:00:00.000Z' AND
-      whereConditionsTrace2.push(
-        type === 'tracetransaction' ? `WHERE total_data.item_id IN (${searchTerms})` : 
-          '');
-      //queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
-    }
-    if (search && type === 'inboundallocation') {
-      whereConditions.push(
-        type === 'inboundallocation' ?
-          `WHERE out3.ORG_ID = 'ID_0344'
-          AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M')
-          
-          AND
-            ( out1.ITEM_ID IN (${searchTerms})
-            OR out1.INVENTORY_CONTAINER_ID IN (${searchTerms})
-            OR out1.GENERATION_NUMBER IN (${searchTerms}) 
-             )      ` :
-          '');
+
+    // Build dynamic WHERE clause from search conditions
+    const buildWhereClause = (conditions, tablePrefix = '') => {
+      if (!conditions || conditions.length === 0) return '';
       
-    }
-    else if (!search && type === 'inboundallocation') {
-      whereConditions.push(
-        type === 'inboundallocation' ?
-          `WHERE out3.ORG_ID = 'ID_0344'
-          AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M')
-          ` :
-          '');
-    }
-    if (search && type === 'outboundorders') {
-      whereConditions.push(
-        type === 'outboundorders' ?
-          `WHERE out3.ORG_ID = 'ID_0344'
-          AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M','B2B_C','TO_B2C')
-          AND out13.ACTUAL_START_TIME IS NULL
-          AND
-            ( out1.ITEM_ID IN (${searchTerms})
-            OR out1.INVENTORY_CONTAINER_ID IN (${searchTerms})
-            OR out1.GENERATION_NUMBER IN (${searchTerms}) 
-             )      ` :
-          '');
+      let whereClause = '';
       
-    }
-    else if (!search && type === 'outboundorders') {
-      whereConditions.push(
-        type === 'outboundorders' ?
-          `WHERE out3.ORG_ID = 'ID_0344'
-          AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M','B2B_C','TO_B2C')
-          AND out13.ACTUAL_START_TIME IS  NULL
-          ` :
-          '');
+      conditions.forEach((condition, index) => {
+        if (index > 0) {
+          whereClause += ` ${condition.boolean} `;
+        }
+        
+        const fieldName = tablePrefix ? `${tablePrefix}.${condition.field}` : condition.field;
+        
+        switch (condition.operation) {
+          case '=':
+            whereClause += `${fieldName} = ?`;
+            queryParams.push(condition.value);
+            break;
+          case '!=':
+            whereClause += `${fieldName} != ?`;
+            queryParams.push(condition.value);
+            break;
+          case 'LIKE':
+            whereClause += `${fieldName} LIKE ?`;
+            queryParams.push(`%${condition.value}%`);
+            break;
+          case 'BEGINS_WITH':
+            whereClause += `${fieldName} LIKE ?`;
+            queryParams.push(`${condition.value}%`);
+            break;
+          case 'ENDS_WITH':
+            whereClause += `${fieldName} LIKE ?`;
+            queryParams.push(`%${condition.value}`);
+            break;
+          case 'IN':
+            const values = condition.value.split(',').map(v => v.trim()).filter(v => v);
+            if (values.length > 0) {
+              const placeholders = values.map(() => '?').join(',');
+              whereClause += `${fieldName} IN (${placeholders})`;
+              queryParams.push(...values);
+            }
+            break;
+          case '>':
+            whereClause += `${fieldName} > ?`;
+            queryParams.push(condition.value);
+            break;
+          case '<':
+            whereClause += `${fieldName} < ?`;
+            queryParams.push(condition.value);
+            break;
+          case '>=':
+            whereClause += `${fieldName} >= ?`;
+            queryParams.push(condition.value);
+            break;
+          case '<=':
+            whereClause += `${fieldName} <= ?`;
+            queryParams.push(condition.value);
+            break;
+          case 'IS_NULL':
+            whereClause += `${fieldName} IS NULL`;
+            break;
+          case 'IS_NOT_NULL':
+            whereClause += `${fieldName} IS NOT NULL`;
+            break;
+          default:
+            whereClause += `${fieldName} = ?`;
+            queryParams.push(condition.value);
+        }
+      });
+      
+      return whereClause;
+    };
+
+    // Add base conditions for different types
+    const addBaseConditions = () => {
+      if (type === 'stockinventory') {
+        whereConditions.push(havingClause);
+      } else if (type === 'stockinbound') {
+        whereConditions.push(havingClause);
+      } else if (type === 'stockoutbound') {
+        whereConditions.push(havingClause);
+      } else if (type === 'inboundallocation') {
+        whereConditions.push(`out3.ORG_ID = 'ID_0344' AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M')`);
+      } else if (type === 'outboundorders') {
+        whereConditions.push(`out3.ORG_ID = 'ID_0344' AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M','B2B_C','TO_B2C') AND out13.ACTUAL_START_TIME IS NULL`);
+      }
+    };
+
+    // Add base conditions
+    addBaseConditions();
+    
+    // Add dynamic search conditions
+    if (conditions.length > 0) {
+      const dynamicWhere = buildWhereClause(conditions, getTablePrefix(type));
+      if (dynamicWhere) {
+        whereConditions.push(`(${dynamicWhere})`);
+      }
     }
     
-
-    // Get the current date and format it as needed
-    //const currentDate = new Date();
-    //const DEFAULT_START_DATE = new Date(currentDate.getTime() - 86400000).toISOString();// Format: YYYY-MM-DD HH:MM:SS
-    //const DEFAULT_END_DATE = currentDate.toISOString();   // Format: YYYY-MM-DD HH:MM:SS
-
-    // Check if startDate and endDate are provided
-    if (startDate) {
-      whereConditions.push(
-        type === 'stockinventory' ? 'a.CREATED_TIMESTAMP >= DATE_ADD( ? , INTERVAL 7 HOUR)' : 
-        type === 'stockinbound' ? 'inb.UPDATED_TIMESTAMP >= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-        type === 'stockoutbound' ? 'out1.UPDATED_TIMESTAMP >= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-        type === 'inboundallocation' ? 'out6.CREATED_TIMESTAMP >= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-        type === 'outboundorders' ? 'out6.CREATED_TIMESTAMP >= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-          '');
-      queryParams.push(startDate);
-    } 
-
-    if (endDate) {
-      whereConditions.push(
-        type === 'stockinventory' ? 'a.CREATED_TIMESTAMP <= DATE_ADD( ? , INTERVAL 7 HOUR)  ' :
-        type === 'stockinbound' ? 'inb.UPDATED_TIMESTAMP <= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-        type === 'stockoutbound' ? 'out1.UPDATED_TIMESTAMP <= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-        type === 'inboundallocation' ? 'out6.CREATED_TIMESTAMP <= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-        type === 'outboundorders' ? 'out6.CREATED_TIMESTAMP <= DATE_ADD( ? , INTERVAL 7 HOUR)' :
-         '');
-      queryParams.push(endDate);
-    } 
+    function getTablePrefix(type) {
+      switch (type) {
+        case 'stockinventory': return 'a';
+        case 'stockinbound': return 'inb';
+        case 'stockoutbound': return 'out1';
+        case 'inboundallocation': return 'out1';
+        case 'outboundorders': return 'out1';
+        case 'tracetransaction': return '';
+        default: return '';
+      }
+    }
 
     
     // Get paginated results
@@ -725,41 +742,23 @@ router.get('/', async (req, res, next) => {
       type === 'stockoutbound' 
     ) {
       whereClause = whereConditions.length 
-      ? `WHERE  ${whereConditions.join(' AND ')} AND ${havingClause} ` 
-        : `WHERE  ${havingClause}`;
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+        : `WHERE ${havingClause}`;
       countQuery = `SELECT COUNT(*) as total_count FROM 
       ${tableName} 
       ${joinClause} 
-      ${whereClause} 
-      ${selectClauseTrace} 
-      ${whereConditionsTrace} 
-      ${groupByTrace} 
-      ${selectClauseTrace2} 
-      ${whereConditionsTrace2} 
-      ${groupByTrace2} 
-      ${orderByClauseTrace} 
-      ${closureAlias}`;
+      ${whereClause}`;
       }
       else if (type === 'tracetransaction'  ) {
-      countQuery = `SELECT COUNT(*) as total_count FROM ${tableName} ${joinClause} ${whereClause} ${selectClauseTrace} ${whereConditionsTrace} ${groupByTrace} ${selectClauseTrace2} ${whereConditionsTrace2} ${groupByTrace2} ${orderByClauseTrace} ${closureAlias}`;
+      // For trace transaction, we need special handling
+      const traceWhereClause = conditions.length > 0 ? 
+        `WHERE ${buildWhereClause(conditions, 'transaction_data')}` : '';
+      countQuery = `SELECT COUNT(*) as total_count FROM ${selectClauseTrace} ${traceWhereClause} ${groupByTrace} ${selectClauseTrace2} ${groupByTrace2} ${orderByClauseTrace} ${closureAlias}`;
     }
-    else if (type === 'inboundallocation') {
+    else if (type === 'inboundallocation' || type === 'outboundorders') {
       whereClause = whereConditions.length 
-      ? `${whereConditions.join(' AND ')}  ` 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
         : ``;
-      //  console.log('whereConditions:', whereConditions);
-      countQuery = `SELECT COUNT(*) as total_count FROM  
-        ${selectClauseTrace} 
-        ${whereClause} 
-        ${groupByTrace} 
-        ${orderByClauseTrace} 
-        ${closureAlias}`;
-    }
-    else if (type === 'outboundorders') {
-      whereClause = whereConditions.length 
-      ? `${whereConditions.join(' AND ')}  ` 
-        : ``;
-      //  console.log('whereConditions:', whereConditions);
       countQuery = `SELECT COUNT(*) as total_count FROM  
         ${selectClauseTrace} 
         ${whereClause} 
@@ -811,15 +810,13 @@ router.get('/', async (req, res, next) => {
       LIMIT ? OFFSET ?`;
       }
       else if (type === 'tracetransaction'  ) {
-        paginatedQuery = `${selectClauseTrace} ${whereConditionsTrace} ${groupByTrace} ${selectClauseTrace2} ${whereConditionsTrace2} ${groupByTrace2} ${orderByClauseTrace} 
+        const traceWhereClause = conditions.length > 0 ? 
+          `WHERE ${buildWhereClause(conditions, 'transaction_data')}` : '';
+        paginatedQuery = `${selectClauseTrace} ${traceWhereClause} ${groupByTrace} ${selectClauseTrace2} ${groupByTrace2} ${orderByClauseTrace} 
       LIMIT ? OFFSET ?`;
     }
-    else if (type === 'inboundallocation'  ) {
-      paginatedQuery = `${selectClauseTrace} ${whereClause} ${groupByTrace} ${selectClauseTrace2} ${whereConditionsTrace2} ${groupByTrace2} ${orderByClauseTrace} 
-      LIMIT ? OFFSET ?`;
-    }
-    else if (type === 'outboundorders'  ) {
-      paginatedQuery = `${selectClauseTrace} ${whereClause} ${groupByTrace} ${selectClauseTrace2} ${whereConditionsTrace2} ${groupByTrace2} ${orderByClauseTrace} 
+    else if (type === 'inboundallocation' || type === 'outboundorders') {
+      paginatedQuery = `${selectClauseTrace} ${whereClause} ${groupByTrace} ${orderByClauseTrace} 
       LIMIT ? OFFSET ?`;
     }
     console.log('Paginated Query:', paginatedQuery);
