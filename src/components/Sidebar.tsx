@@ -100,7 +100,7 @@ const Sidebar: React.FC = () => {
   };
 
   const renderSubmenu = (menuName: keyof typeof openSubmenus, items: typeof inventorySubmenuItems, Icon: React.ComponentType<any>) => {
-    if (isCollapsed || isAutoHidden) {
+    if (isCollapsed) {
       return (
         <li className="relative group" key={menuName}>
           <button
@@ -111,7 +111,7 @@ const Sidebar: React.FC = () => {
           >
             <Icon className="h-5 w-5" />
           </button>
-          {openSubmenus[menuName] && !isAutoHidden && (
+          {openSubmenus[menuName] && (
             <div className="absolute left-full top-0 ml-1 w-48 bg-blue-600 rounded-lg shadow-lg py-2 z-10">
               {items.map((item) => (
                 <Link
@@ -130,6 +130,32 @@ const Sidebar: React.FC = () => {
       );
     }
 
+    if (isAutoHidden) {
+      return (
+        <li className="relative group" key={menuName}>
+          <button
+            className="flex items-center justify-center w-full px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+            title={`Menu-${menuName.charAt(0).toUpperCase() + menuName.slice(1)}`}
+            aria-label={`${menuName} menu`}
+          >
+            <Icon className="h-5 w-5" />
+          </button>
+          <div className="absolute left-full top-0 ml-1 w-48 bg-blue-600 rounded-lg shadow-lg py-2 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+            {items.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="block px-4 py-2 text-sm hover:bg-blue-700"
+                title={item.label}
+                aria-label={item.label}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </li>
+      );
+    }
     return (
       <li key={menuName}>
         <button
