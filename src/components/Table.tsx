@@ -50,6 +50,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
   const [allData, setAllData] = useState<any[]>([]);
   const [displayData, setDisplayData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -74,7 +75,25 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       });
     });
   }, [allData, columnFilters]);
+
+  const cancelQuery = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setLoading(false);
+      toast.info('Query cancelled');
+    }
+  };
+
   const fetchData = async (searchConditions: SearchCondition[] = []) => {
+    // Cancel any existing request
+    if (abortController) {
+      abortController.abort();
+    }
+
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
+
     try {
       setLoading(true);
       
@@ -82,7 +101,8 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
         page: 1,
         limit: 10000000, // Load all data
         searchConditions,
-        type
+        type,
+        signal: newAbortController.signal
       });
 
       const data = response.data || [];
@@ -90,12 +110,17 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       setDisplayData(data);
       setHasData(true);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setAllData([]);
-      setDisplayData([]);
-      toast.error('Failed to fetch data');
+      if (error.name === 'AbortError') {
+        console.log('Query was cancelled');
+      } else {
+        console.error('Error fetching data:', error);
+        setAllData([]);
+        setDisplayData([]);
+        toast.error('Failed to fetch data');
+      }
     } finally {
       setLoading(false);
+      setAbortController(null);
     }
   };
 
@@ -219,10 +244,20 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               <button
                 onClick={() => setIsSearchModalOpen(true)}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+                disabled={loading}
               >
                 <Search className="h-4 w-4 mr-2" />
                 Advanced Search
               </button>
+              
+              {loading && (
+                <button
+                  onClick={cancelQuery}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
+                >
+                  Cancel Query
+                </button>
+              )}
               
               {hasData && (
                 <button
