@@ -198,7 +198,7 @@ const Sidebar: React.FC = () => {
     <div 
       ref={sidebarRef}
       className={`bg-blue-600 text-white ${
-        isCollapsed ? 'w-16' : isAutoHidden ? 'w-16' : 'w-64'
+        isCollapsed ? 'w-16' : isAutoHidden ? 'w-20' : 'w-64'
       } min-h-screen flex flex-col transition-all duration-300 ${
         isAutoHidden ? 'shadow-lg z-10' : ''
       }`}
