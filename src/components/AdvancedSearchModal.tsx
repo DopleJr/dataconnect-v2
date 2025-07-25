@@ -4,6 +4,7 @@ import { Search, Plus, Trash2, X } from 'lucide-react';
 interface Column {
   key: string;
   label: string;
+  query?: string;
 }
 
 interface SearchCondition {
@@ -47,17 +48,20 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   const [conditions, setConditions] = useState<SearchCondition[]>([
     {
       id: '1',
-      field: columns[0]?.key || '',
+      field: columns.find(col => col.query)?.query || columns[0]?.key || '',
       operation: '=',
       value: '',
       boolean: 'AND'
     }
   ]);
 
+  // Filter columns to only show those with query field
+  const searchableColumns = columns.filter(col => col.query && col.query.trim() !== '');
+
   const addCondition = () => {
     const newCondition: SearchCondition = {
       id: Date.now().toString(),
-      field: columns[0]?.key || '',
+      field: searchableColumns[0]?.query || '',
       operation: '=',
       value: '',
       boolean: 'AND'
@@ -92,7 +96,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   const handleClear = () => {
     setConditions([{
       id: '1',
-      field: columns[0]?.key || '',
+      field: searchableColumns[0]?.query || '',
       operation: '=',
       value: '',
       boolean: 'AND'
@@ -184,8 +188,8 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                       onChange={(e) => updateCondition(condition.id, 'field', e.target.value)}
                       className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      {columns.map(column => (
-                        <option key={column.key} value={column.key}>
+                      {searchableColumns.map(column => (
+                        <option key={column.key} value={column.query}>
                           {column.label}
                         </option>
                       ))}

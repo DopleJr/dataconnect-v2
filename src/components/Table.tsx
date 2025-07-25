@@ -5,10 +5,7 @@ import { getAllProducts } from '../services/api';
 import toast from 'react-hot-toast';
 import AdvancedSearchModal from './AdvancedSearchModal';
 
-interface Column {
-  key: string;
-  label: string;
-}
+import { Column } from '../types';
 
 interface SearchCondition {
   id: string;

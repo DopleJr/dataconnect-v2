@@ -621,7 +621,7 @@ router.get('/', async (req, res, next) => {
     const queryParams = [];
 
     // Build dynamic WHERE clause from search conditions
-    const buildWhereClause = (conditions, tablePrefix = '') => {
+    const buildWhereClause = (conditions) => {
       if (!conditions || conditions.length === 0) return '';
       
       let whereClause = '';
@@ -631,7 +631,7 @@ router.get('/', async (req, res, next) => {
           whereClause += ` ${condition.boolean} `;
         }
         
-        const fieldName = tablePrefix ? `${tablePrefix}.${condition.field}` : condition.field;
+        const fieldName = condition.field; // Use the query field directly from frontend
         
         switch (condition.operation) {
           case '=':

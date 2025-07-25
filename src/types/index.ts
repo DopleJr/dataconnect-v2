@@ -24,3 +24,10 @@ export interface DashboardStats {
   totalOutbound: number;
   dbStatus: 'connected' | 'error' | 'unknown';
 }
+
+// Column interface for tables
+export interface Column {
+  key: string;
+  label: string;
+  query?: string;
+}
