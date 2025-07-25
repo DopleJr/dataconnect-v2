@@ -58,7 +58,6 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [hasData, setHasData] = useState(false);
   const [columnFilters, setColumnFilters] = useState<ColumnFilter>({});
-  const [showFilters, setShowFilters] = useState(false);
 
   // Apply column filters to data
   const filteredData = React.useMemo(() => {
@@ -261,18 +260,6 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               
               {hasData && (
                 <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center px-4 py-2 rounded-md transition-colors duration-200 ${
-                    showFilters ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-white hover:bg-gray-700'
-                  }`}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
-                </button>
-              )}
-              
-              {hasData && (
-                <button
                   onClick={handleClearData}
                   className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors duration-200"
                 >
@@ -322,7 +309,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
             isLoading={loading}
           />
 
-          {hasData && showFilters && Object.keys(columnFilters).length > 0 && (
+          {hasData && Object.keys(columnFilters).length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-blue-800">Active Filters:</h3>
@@ -374,7 +361,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
                 <th key={column.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="space-y-2">
                     <div>{column.label}</div>
-                    {showFilters && (
+                    {hasData && (
                       <div className="relative">
                         <input
                           type="text"
