@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Download, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, Search, Filter, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getAllProducts } from '../services/api';
 import toast from 'react-hot-toast';
 import AdvancedSearchModal from './AdvancedSearchModal';
-import TableFilter from './TableFilter';
 
 interface Column {
   key: string;
@@ -23,6 +22,10 @@ interface TableProps {
   columns: Column[];
   title: string;
   type: 'stockinventory' | 'stockinbound'| 'stockoutbound' | 'outboundorders' | 'tracetransaction' | 'inboundallocation';
+}
+
+interface ColumnFilter {
+  [key: string]: string;
 }
 
 interface ExportProgress {
@@ -48,7 +51,6 @@ const ROWS_PER_SHEET = 500000;
 
 const Table: React.FC<TableProps> = ({ columns, title, type }) => {
   const [allData, setAllData] = useState<any[]>([]);
-  const [filteredData, setFilteredData] = useState<any[]>([]);
   const [displayData, setDisplayData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -57,7 +59,24 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [hasData, setHasData] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilter>({});
+  const [showFilters, setShowFilters] = useState(false);
 
+  // Apply column filters to data
+  const filteredData = React.useMemo(() => {
+    if (!allData.length) return [];
+    
+    return allData.filter(row => {
+      return Object.entries(columnFilters).every(([columnKey, filterValue]) => {
+        if (!filterValue.trim()) return true;
+        
+        const cellValue = String(row[columnKey] || '').toLowerCase();
+        const searchValue = filterValue.toLowerCase();
+        
+        return cellValue.includes(searchValue);
+      });
+    });
+  }, [allData, columnFilters]);
   const fetchData = async (searchConditions: SearchCondition[] = []) => {
     try {
       setLoading(true);
@@ -71,13 +90,11 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
 
       const data = response.data || [];
       setAllData(data);
-      setFilteredData(data);
       setDisplayData(data);
       setHasData(true);
     } catch (error) {
       console.error('Error fetching data:', error);
       setAllData([]);
-      setFilteredData([]);
       setDisplayData([]);
       toast.error('Failed to fetch data');
     } finally {
@@ -92,15 +109,30 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
 
   const handleClearData = () => {
     setAllData([]);
-    setFilteredData([]);
     setDisplayData([]);
     setHasData(false);
     setCurrentPage(1);
+    setColumnFilters({});
   };
 
-  const handleFilteredDataChange = (filtered: any[]) => {
-    setFilteredData(filtered);
+  const handleColumnFilterChange = (columnKey: string, value: string) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: value
+    }));
     setCurrentPage(1);
+  };
+
+  const clearColumnFilter = (columnKey: string) => {
+    setColumnFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[columnKey];
+      return newFilters;
+    });
+  };
+
+  const clearAllColumnFilters = () => {
+    setColumnFilters({});
   };
 
   // Calculate pagination for filtered data
@@ -197,6 +229,18 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               
               {hasData && (
                 <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center px-4 py-2 rounded-md transition-colors duration-200 ${
+                    showFilters ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-white hover:bg-gray-700'
+                  }`}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  {showFilters ? 'Hide Filters' : 'Show Filters'}
+                </button>
+              )}
+              
+              {hasData && (
+                <button
                   onClick={handleClearData}
                   className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors duration-200"
                 >
@@ -246,12 +290,36 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
             isLoading={loading}
           />
 
-          {hasData && allData.length > 0 && (
-            <TableFilter
-              columns={columns}
-              data={allData}
-              onFilteredDataChange={handleFilteredDataChange}
-            />
+          {hasData && showFilters && Object.keys(columnFilters).length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-blue-800">Active Filters:</h3>
+                <button
+                  onClick={clearAllColumnFilters}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(columnFilters).map(([columnKey, value]) => {
+                  if (!value.trim()) return null;
+                  const column = columns.find(col => col.key === columnKey);
+                  return (
+                    <div key={columnKey} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                      <span className="font-medium">{column?.label}:</span>
+                      <span className="ml-1">{value}</span>
+                      <button
+                        onClick={() => clearColumnFilter(columnKey)}
+                        className="ml-2 hover:text-blue-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           <div className="flex items-center justify-between text-sm text-gray-600">
@@ -271,11 +339,29 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
           <thead className="bg-gray-50">
             <tr>
               {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  {column.label}
+                <th key={column.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="space-y-2">
+                    <div>{column.label}</div>
+                    {showFilters && (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder={`Filter ${column.label}...`}
+                          value={columnFilters[column.key] || ''}
+                          onChange={(e) => handleColumnFilterChange(column.key, e.target.value)}
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 normal-case"
+                        />
+                        {columnFilters[column.key] && (
+                          <button
+                            onClick={() => clearColumnFilter(column.key)}
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>

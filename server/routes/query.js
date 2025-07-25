@@ -713,23 +713,12 @@ router.get('/', async (req, res, next) => {
     
     // Add dynamic search conditions
     if (conditions.length > 0) {
-      const dynamicWhere = buildWhereClause(conditions, getTablePrefix(type));
+      const dynamicWhere = buildWhereClause(conditions);
       if (dynamicWhere) {
         whereConditions.push(`(${dynamicWhere})`);
       }
     }
     
-    function getTablePrefix(type) {
-      switch (type) {
-        case 'stockinventory': return 'a';
-        case 'stockinbound': return 'inb';
-        case 'stockoutbound': return 'out1';
-        case 'inboundallocation': return 'out1';
-        case 'outboundorders': return 'out1';
-        case 'tracetransaction': return '';
-        default: return '';
-      }
-    }
 
     
     // Get paginated results
@@ -751,8 +740,8 @@ router.get('/', async (req, res, next) => {
       }
       else if (type === 'tracetransaction'  ) {
       // For trace transaction, we need special handling
-      const traceWhereClause = conditions.length > 0 ? 
-        `WHERE ${buildWhereClause(conditions, 'transaction_data')}` : '';
+      const traceWhereClause = conditions.length > 0 && buildWhereClause(conditions) ? 
+        `WHERE ${buildWhereClause(conditions)}` : '';
       countQuery = `SELECT COUNT(*) as total_count FROM ${selectClauseTrace} ${traceWhereClause} ${groupByTrace} ${selectClauseTrace2} ${groupByTrace2} ${orderByClauseTrace} ${closureAlias}`;
     }
     else if (type === 'inboundallocation' || type === 'outboundorders') {
@@ -810,8 +799,8 @@ router.get('/', async (req, res, next) => {
       LIMIT ? OFFSET ?`;
       }
       else if (type === 'tracetransaction'  ) {
-        const traceWhereClause = conditions.length > 0 ? 
-          `WHERE ${buildWhereClause(conditions, 'transaction_data')}` : '';
+        const traceWhereClause = conditions.length > 0 && buildWhereClause(conditions) ? 
+          `WHERE ${buildWhereClause(conditions)}` : '';
         paginatedQuery = `${selectClauseTrace} ${traceWhereClause} ${groupByTrace} ${selectClauseTrace2} ${groupByTrace2} ${orderByClauseTrace} 
       LIMIT ? OFFSET ?`;
     }
