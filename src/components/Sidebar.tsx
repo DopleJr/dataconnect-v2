@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -52,19 +51,21 @@ const Sidebar: React.FC = () => {
 
     document.addEventListener('mousedown', handleClickOutside);
     
-    if (sidebarRef.current) {
-      sidebarRef.current.addEventListener('mouseenter', handleMouseEnter);
-      sidebarRef.current.addEventListener('mouseleave', handleMouseLeave);
+    const sidebarElement = sidebarRef.current;
+    if (sidebarElement) {
+      sidebarElement.addEventListener('mouseenter', handleMouseEnter);
+      sidebarElement.addEventListener('mouseleave', handleMouseLeave);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      if (sidebarRef.current) {
-        sidebarRef.current.removeEventListener('mouseenter', handleMouseEnter);
-        sidebarRef.current.removeEventListener('mouseleave', handleMouseLeave);
+      if (sidebarElement) {
+        sidebarElement.removeEventListener('mouseenter', handleMouseEnter);
+        sidebarElement.removeEventListener('mouseleave', handleMouseLeave);
       }
     };
   }, [isCollapsed, isAutoHidden]);
+
   const isActive = (path: string) => {
     return location.pathname === path ? 'bg-blue-700' : '';
   };
