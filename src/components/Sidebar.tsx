@@ -90,6 +90,9 @@ const Sidebar: React.FC = () => {
   ];
 
   const toggleSubmenu = (menu: keyof typeof openSubmenus) => {
+    // Don't open submenus when sidebar is auto-hidden
+    if (isAutoHidden) return;
+    
     setOpenSubmenus(prev => ({
       ...prev,
       [menu]: !prev[menu]
@@ -108,7 +111,7 @@ const Sidebar: React.FC = () => {
           >
             <Icon className="h-5 w-5" />
           </button>
-          {openSubmenus[menuName] && (
+          {openSubmenus[menuName] && !isAutoHidden && (
             <div className="absolute left-full top-0 ml-1 w-48 bg-blue-600 rounded-lg shadow-lg py-2 z-10">
               {items.map((item) => (
                 <Link
