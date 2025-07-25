@@ -103,6 +103,43 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
     return !['IS_NULL', 'IS_NOT_NULL'].includes(operation);
   };
 
+  const isTimeField = (fieldKey: string) => {
+    return fieldKey.toLowerCase().includes('time') || 
+           fieldKey.toLowerCase().includes('date') ||
+           fieldKey.toLowerCase().includes('timestamp');
+  };
+
+  const formatDateTimeForInput = (value: string) => {
+    if (!value) return '';
+    
+    // If it's already in the correct format (YYYY-MM-DDTHH:mm), return as is
+    if (value.includes('T')) return value;
+    
+    // If it's in format YYYY-MM-DD HH:mm:ss, convert to YYYY-MM-DDTHH:mm
+    if (value.includes(' ')) {
+      const [datePart, timePart] = value.split(' ');
+      const timeOnly = timePart.substring(0, 5); // Get HH:mm only
+      return `${datePart}T${timeOnly}`;
+    }
+    
+    return value;
+  };
+
+  const formatDateTimeForServer = (value: string) => {
+    if (!value) return '';
+    
+    // If it's in datetime-local format (YYYY-MM-DDTHH:mm), convert to server format
+    if (value.includes('T')) {
+      return value.replace('T', ' ') + ':00'; // Add seconds
+    }
+    
+    return value;
+  };
+
+  const handleDateTimeChange = (conditionId: string, value: string) => {
+    const serverFormattedValue = formatDateTimeForServer(value);
+    updateCondition(conditionId, 'value', serverFormattedValue);
+  };
   if (!isOpen) return null;
 
   return (
@@ -176,17 +213,27 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Value
                     </label>
-                    <input
-                      type="text"
-                      value={condition.value}
-                      onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
-                      disabled={!needsValue(condition.operation)}
-                      placeholder={
-                        condition.operation === 'IN' ? 'value1,value2,value3' :
-                        needsValue(condition.operation) ? 'Enter value...' : 'Not required'
-                      }
-                      className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    />
+                    {isTimeField(condition.field) && needsValue(condition.operation) ? (
+                      <input
+                        type="datetime-local"
+                        value={formatDateTimeForInput(condition.value)}
+                        onChange={(e) => handleDateTimeChange(condition.id, e.target.value)}
+                        disabled={!needsValue(condition.operation)}
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={condition.value}
+                        onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
+                        disabled={!needsValue(condition.operation)}
+                        placeholder={
+                          condition.operation === 'IN' ? 'value1,value2,value3' :
+                          needsValue(condition.operation) ? 'Enter value...' : 'Not required'
+                        }
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    )}
                   </div>
 
                   <div className="flex space-x-2">
