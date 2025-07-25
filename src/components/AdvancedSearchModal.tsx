@@ -174,7 +174,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                   </div>
                 )}
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end p-4 border rounded-lg bg-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end p-4 border rounded-lg bg-gray-50">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Field
@@ -209,7 +209,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                     </select>
                   </div>
 
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Value
                     </label>
@@ -219,7 +219,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                         value={formatDateTimeForInput(condition.value)}
                         onChange={(e) => handleDateTimeChange(condition.id, e.target.value)}
                         disabled={!needsValue(condition.operation)}
-                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed min-w-[200px]"
                       />
                     ) : (
                       <input
@@ -231,7 +231,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                           condition.operation === 'IN' ? 'value1,value2,value3' :
                           needsValue(condition.operation) ? 'Enter value...' : 'Not required'
                         }
-                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed min-w-[200px]"
                       />
                     )}
                   </div>
