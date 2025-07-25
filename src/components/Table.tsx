@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getAllProducts } from '../services/api';
 import toast from 'react-hot-toast';
-import AdvancedSearch from './AdvancedSearch';
+import AdvancedSearchModal from './AdvancedSearchModal';
 import TableFilter from './TableFilter';
 
 interface Column {
@@ -50,25 +50,18 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
   const [allData, setAllData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [displayData, setDisplayData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasData, setHasData] = useState(false);
 
   const fetchData = async (searchConditions: SearchCondition[] = []) => {
     try {
       setLoading(true);
       
-      if (searchConditions.length === 0 && !hasSearched) {
-        // No search conditions and haven't searched yet - don't load data
-        setAllData([]);
-        setFilteredData([]);
-        setDisplayData([]);
-        return;
-      }
-
       const response = await getAllProducts({
         page: 1,
         limit: 10000000, // Load all data
@@ -80,7 +73,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       setAllData(data);
       setFilteredData(data);
       setDisplayData(data);
-      setHasSearched(true);
+      setHasData(true);
     } catch (error) {
       console.error('Error fetching data:', error);
       setAllData([]);
@@ -97,11 +90,11 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
     fetchData(conditions);
   };
 
-  const handleClearSearch = () => {
+  const handleClearData = () => {
     setAllData([]);
     setFilteredData([]);
     setDisplayData([]);
-    setHasSearched(false);
+    setHasData(false);
     setCurrentPage(1);
   };
 
@@ -193,47 +186,67 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
         <div className="flex flex-col space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
-            <div className="relative">
+            <div className="flex items-center space-x-3">
               <button
-                onClick={exportToXLSX}
-                disabled={exporting || filteredData.length === 0}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
+                onClick={() => setIsSearchModalOpen(true)}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
               >
-                <Download className="h-4 w-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Export to Excel'}
+                <Search className="h-4 w-4 mr-2" />
+                Advanced Search
               </button>
               
-              {exportProgress && (
-                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-lg p-4 z-50">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Progress:</span>
-                      <span>{exportProgress.percentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${exportProgress.percentage}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Sheet {exportProgress.currentSheet} of {exportProgress.totalSheets}</span>
-                      <span>{exportProgress.timeRemaining} remaining</span>
+              {hasData && (
+                <button
+                  onClick={handleClearData}
+                  className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors duration-200"
+                >
+                  Clear Data
+                </button>
+              )}
+              
+              <div className="relative">
+                <button
+                  onClick={exportToXLSX}
+                  disabled={exporting || filteredData.length === 0}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {exporting ? 'Exporting...' : 'Export to Excel'}
+                </button>
+                
+                {exportProgress && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-lg p-4 z-50">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Progress:</span>
+                        <span>{exportProgress.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${exportProgress.percentage}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Sheet {exportProgress.currentSheet} of {exportProgress.totalSheets}</span>
+                        <span>{exportProgress.timeRemaining} remaining</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
-          <AdvancedSearch
+          <AdvancedSearchModal
+            isOpen={isSearchModalOpen}
+            onClose={() => setIsSearchModalOpen(false)}
             columns={columns}
             onSearch={handleAdvancedSearch}
-            onClear={handleClearSearch}
             isLoading={loading}
           />
 
-          {hasSearched && allData.length > 0 && (
+          {hasData && allData.length > 0 && (
             <TableFilter
               columns={columns}
               data={allData}
@@ -243,7 +256,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
 
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
-              {hasSearched ? (
+              {hasData ? (
                 <>Showing {filteredData.length} of {allData.length} total records</>
               ) : (
                 'Use Advanced Search to load data'
@@ -272,7 +285,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               Array.from({ length: itemsPerPage }).map((_, index) => (
                 <TableSkeleton key={index} columns={columns} />
               ))
-            ) : !hasSearched ? (
+            ) : !hasData ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
                   <div className="space-y-2">
@@ -281,10 +294,16 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
                   </div>
                 </td>
               </tr>
+            ) : allData.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-6 py-4 text-center text-gray-500">
+                  No data found matching your search criteria
+                </td>
+              </tr>
             ) : displayData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-4 text-center text-gray-500">
-                  {filteredData.length === 0 ? 'No data matches your search criteria' : 'No data found'}
+                  No data matches your current filters
                 </td>
               </tr>
             ) : (
@@ -321,7 +340,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
           <span className="text-sm text-gray-700">entries</span>
         </div>
 
-        {hasSearched && (
+        {hasData && (
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
