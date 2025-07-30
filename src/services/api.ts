@@ -78,6 +78,7 @@ export const getAllProducts = async (params: {
   searchConditions?: SearchCondition[];
   type?: string; 
   signal?: AbortSignal;
+  downloadMode?: boolean;
 }): Promise<{ data: Product[]; total: number; page: number; totalPages: number }> => {
   try {
     if (params.searchConditions && params.searchConditions.length > 0) {
