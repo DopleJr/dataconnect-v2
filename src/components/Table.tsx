@@ -307,6 +307,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
             columns={columns}
             onSearch={handleAdvancedSearch}
             isLoading={loading}
+            tableType={type}
           />
 
           {hasData && Object.keys(columnFilters).length > 0 && (

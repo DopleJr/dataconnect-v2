@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, Trash2, X } from 'lucide-react';
+import { Search, Plus, Trash2, X, Download } from 'lucide-react';
 
 interface Column {
   key: string;
@@ -21,6 +21,7 @@ interface AdvancedSearchModalProps {
   columns: Column[];
   onSearch: (conditions: SearchCondition[]) => void;
   isLoading: boolean;
+  tableType: string;
 }
 
 const operations = [
@@ -43,8 +44,11 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   onClose,
   columns,
   onSearch,
-  isLoading
+  isLoading,
+  tableType
 }) => {
+  const [downloadOnly, setDownloadOnly] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [conditions, setConditions] = useState<SearchCondition[]>([
     {
       id: '1',
@@ -89,11 +93,56 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
         c.value.trim()
       )
     );
-    onSearch(validConditions);
-    onClose();
+    
+    if (downloadOnly) {
+      handleDirectDownload(validConditions);
+    } else {
+      onSearch(validConditions);
+      onClose();
+    }
+  };
+
+  const handleDirectDownload = async (validConditions: SearchCondition[]) => {
+    try {
+      setIsDownloading(true);
+      
+      // Import the API function and export utility
+      const { getAllProducts } = await import('../services/api');
+      const { exportDirectDownload } = await import('../utils/excelExport');
+      
+      // Get the table type from the parent component (we'll need to pass this as a prop)
+      // For now, we'll use a generic approach
+      const response = await getAllProducts({
+        page: 1,
+        limit: 10000000, // Large limit to get all data
+        searchConditions: validConditions,
+        type: tableType,
+        downloadMode: true
+      });
+
+      if (response.data && response.data.length > 0) {
+        await exportDirectDownload(response.data, columns, 'search_results');
+        // Show success message
+        const toast = await import('react-hot-toast');
+        toast.default.success(`Downloaded ${response.data.length} records to Excel`);
+      } else {
+        const toast = await import('react-hot-toast');
+        toast.default.info('No data found matching your criteria');
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Download error:', error);
+      const toast = await import('react-hot-toast');
+      toast.default.error('Failed to download data');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   };
 
   const handleClear = () => {
+    setDownloadOnly(false);
     setConditions([{
       id: '1',
       field: searchableColumns[0]?.query || '',
@@ -265,6 +314,26 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               <span>Add Condition</span>
             </button>
           </div>
+
+          {/* Download Only Option */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={downloadOnly}
+                onChange={(e) => setDownloadOnly(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-blue-800">
+                  Download to Excel only (don't load table)
+                </span>
+                <p className="text-xs text-blue-600 mt-1">
+                  Downloads search results directly to Excel file without displaying in the table
+                </p>
+              </div>
+            </label>
+          </div>
         </div>
 
         {/* Modal Footer */}
@@ -285,18 +354,27 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
             </button>
             <button
               onClick={handleSearch}
-              disabled={isLoading}
+              disabled={isLoading || isDownloading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
             >
-              {isLoading ? (
+              {isLoading || isDownloading ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
-                  <span>Searching...</span>
+                  <span>{isDownloading ? 'Downloading...' : 'Searching...'}</span>
                 </>
               ) : (
                 <>
-                  <Search className="h-4 w-4" />
-                  <span>Search</span>
+                  {downloadOnly ? (
+                    <>
+                      <Download className="h-4 w-4" />
+                      <span>Download</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4" />
+                      <span>Search</span>
+                    </>
+                  )}
                 </>
               )}
             </button>
