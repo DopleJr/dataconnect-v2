@@ -21,6 +21,7 @@ interface AdvancedSearchModalProps {
   columns: Column[];
   onSearch: (conditions: SearchCondition[]) => void;
   isLoading: boolean;
+  tableType: string;
 }
 
 const operations = [
@@ -43,7 +44,8 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   onClose,
   columns,
   onSearch,
-  isLoading
+  isLoading,
+  tableType
 }) => {
   const [downloadOnly, setDownloadOnly] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
