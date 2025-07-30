@@ -96,9 +96,50 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
     try {
       setLoading(true);
       
+      // First, get count to check if we should auto-download
+      const countResponse = await getAllProducts({
+        page: 1,
+        limit: 1, // Just get count, not actual data
+        searchConditions,
+        type,
+        signal: newAbortController.signal,
+        countOnly: true
+      });
+
+      const totalRecords = countResponse.total || 0;
+
+      // If more than 10k records, auto-download to Excel
+      if (totalRecords > 10000) {
+        toast.info(`Found ${totalRecords.toLocaleString()} records. Downloading to Excel automatically...`);
+        
+        // Get all data for download
+        const downloadResponse = await getAllProducts({
+          page: 1,
+          limit: totalRecords, // Get all records
+          searchConditions,
+          type,
+          signal: newAbortController.signal,
+          downloadMode: true
+        });
+
+        if (downloadResponse.data && downloadResponse.data.length > 0) {
+          // Import and use the export utility
+          const { exportLargeDataset } = await import('../utils/excelExport');
+          await exportLargeDataset(downloadResponse.data, columns, title);
+          toast.success(`Downloaded ${downloadResponse.data.length.toLocaleString()} records to Excel`);
+        }
+
+        // Don't load data into table
+        setAllData([]);
+        setDisplayData([]);
+        setHasData(false);
+        return;
+      }
+
+      // If 10k or less, load normally into table
       const response = await getAllProducts({
         page: 1,
-        limit: 10000000, // Load all data
+        limit: totalRecords, // Load the actual count
         searchConditions,
         type,
         signal: newAbortController.signal
@@ -108,6 +149,10 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       setAllData(data);
       setDisplayData(data);
       setHasData(true);
+      
+      if (data.length > 0) {
+        toast.success(`Loaded ${data.length.toLocaleString()} records into table`);
+      }
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Query was cancelled');

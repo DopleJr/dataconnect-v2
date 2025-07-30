@@ -10,7 +10,8 @@ router.get('/', async (req, res, next) => {
       page = 1, 
       limit = 10, 
       searchConditions = '',
-      type = ''
+      type = '',
+      countOnly = false
     } = req.query;
 
     // Parse search conditions
@@ -774,6 +775,16 @@ router.get('/', async (req, res, next) => {
 
     const totals = countResult.total_count;
     console.log('Totals:', totals);
+
+    // If only count is requested, return just the count
+    if (countOnly === 'true') {
+      return res.json({
+        data: [],
+        totals,
+        page: Number(page),
+        totalPages: Math.ceil(totals / Number(limit))
+      });
+    }
 
     if (totals === 0) {
       console.log('Totals is 0. Returning empty data.');

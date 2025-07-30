@@ -79,6 +79,7 @@ export const getAllProducts = async (params: {
   type?: string; 
   signal?: AbortSignal;
   downloadMode?: boolean;
+  countOnly?: boolean;
 }): Promise<{ data: Product[]; total: number; page: number; totalPages: number }> => {
   try {
     if (params.searchConditions && params.searchConditions.length > 0) {
@@ -86,7 +87,8 @@ export const getAllProducts = async (params: {
         page: params.page,
         limit: params.limit,
         type: params.type,
-        searchConditions: JSON.stringify(params.searchConditions)
+        searchConditions: JSON.stringify(params.searchConditions),
+        countOnly: params.countOnly
       };
       const response = await api.get('/query', { 
         params: queryParams,
