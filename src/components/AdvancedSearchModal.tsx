@@ -116,7 +116,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
         page: 1,
         limit: 10000000, // Large limit to get all data
         searchConditions: validConditions,
-        type: 'stockinventory', // This should be passed as prop
+        type: tableType,
         downloadMode: true
       });
 
