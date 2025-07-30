@@ -21,7 +21,6 @@ interface AdvancedSearchModalProps {
   columns: Column[];
   onSearch: (conditions: SearchCondition[]) => void;
   isLoading: boolean;
-  tableType: string;
 }
 
 const operations = [
@@ -44,8 +43,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   onClose,
   columns,
   onSearch,
-  isLoading,
-  tableType
+  isLoading
 }) => {
   const [downloadOnly, setDownloadOnly] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -116,7 +114,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
         page: 1,
         limit: 10000000, // Large limit to get all data
         searchConditions: validConditions,
-        type: tableType,
+        type: 'stockinventory', // This should be passed as prop
         downloadMode: true
       });
 
@@ -138,7 +136,6 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
     } finally {
       setIsDownloading(false);
     }
-  };
   };
 
   const handleClear = () => {
@@ -193,6 +190,7 @@ const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
     const serverFormattedValue = formatDateTimeForServer(value);
     updateCondition(conditionId, 'value', serverFormattedValue);
   };
+  
   if (!isOpen) return null;
 
   return (
