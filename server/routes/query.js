@@ -763,34 +763,35 @@ router.get('/', async (req, res, next) => {
     const [countResult] = await db.query(countQuery, queryParams);
     console.log('Count Result:', countResult);
 
-    if (!countResult || !countResult.total_count) {
+    if (!countResult || countResult.total_count === undefined) {
       console.log('Invalid count result. Returning empty data.');
       return res.json({
         data: [],
-        totals: 0,
+        total: 0,
         page: Number(page),
         totalPages: 0
       });
     }
 
-    const totals = countResult.total_count;
-    console.log('Totals:', totals);
+    const total = countResult.total_count;
+    console.log('Total records:', total);
 
     // If only count is requested, return just the count
     if (countOnly === 'true') {
+      console.log('Returning count only:', total);
       return res.json({
         data: [],
-        totals,
+        total,
         page: Number(page),
-        totalPages: Math.ceil(totals / Number(limit))
+        totalPages: Math.ceil(total / Number(limit))
       });
     }
 
-    if (totals === 0) {
+    if (total === 0) {
       console.log('Totals is 0. Returning empty data.');
       return res.json({
         data: [],
-        totals: 0,
+        total: 0,
         page: Number(page),
         totalPages: 0
       });
@@ -826,12 +827,12 @@ router.get('/', async (req, res, next) => {
       const items = await db.query(paginatedQuery, [...queryParams, Number(limit), offset]);
       console.log(`Success Retrieve Data!! 
 Menu Type      : ${type} 
-Total Row Data : ${ countResult.total_count} `);
+Total Row Data : ${total} `);
       res.json({
         data: items,
-        totals,
+        total,
         page: Number(page),
-        totalPages: Math.ceil(totals / Number(limit))
+        totalPages: Math.ceil(total / Number(limit))
       });
     } catch (error) {
       console.log('Error occurred while fetching paginated results:', error);

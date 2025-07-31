@@ -96,10 +96,10 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
     try {
       setLoading(true);
       
-      // First, get count to check if we should auto-download
+      // First, get count only to check if we should auto-download
       const countResponse = await getAllProducts({
         page: 1,
-        limit: 1, // Just get count, not actual data
+        limit: 1,
         searchConditions,
         type,
         signal: newAbortController.signal,
@@ -107,6 +107,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       });
 
       const totalRecords = countResponse.total || 0;
+      console.log('Total records found:', totalRecords); // Debug log
 
       // If more than 10k records, auto-download to Excel
       if (totalRecords > 10000) {
