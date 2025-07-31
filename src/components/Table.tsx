@@ -80,7 +80,10 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
       abortController.abort();
       setAbortController(null);
       setLoading(false);
-      toast.info('Query cancelled');
+      toast('Query cancelled', {
+        icon: 'ℹ️',
+        duration: 3000,
+      });
     }
   };
 
@@ -111,7 +114,10 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
 
       // If more than 10k records, auto-download to Excel
       if (totalRecords > 10000) {
-        toast.info(`Found ${totalRecords.toLocaleString()} records. Downloading to Excel automatically...`);
+        toast(`Found ${totalRecords.toLocaleString()} records. Downloading to Excel automatically...`, {
+          icon: 'ℹ️',
+          duration: 4000,
+        });
         
         // Get all data for download
         const downloadResponse = await getAllProducts({
