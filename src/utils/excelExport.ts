@@ -28,7 +28,8 @@ export const calculateTimeRemaining = (startTime: number, progress: number): str
 const processDataInChunks = async (
   data: any[],
   columns: Column[],
-  chunkSize: number = CHUNK_SIZE
+  chunkSize: number = CHUNK_SIZE,
+  onChunkProgress?: (processed: number, total: number) => void
 ): Promise<any[]> => {
   const result: any[] = [];
   
@@ -45,6 +46,11 @@ const processDataInChunks = async (
     });
     
     result.push(...processedChunk);
+    
+    // Report chunk progress
+    if (onChunkProgress) {
+      onChunkProgress(i + chunk.length, data.length);
+    }
     
     // Allow UI to breathe
     if (i % (chunkSize * 4) === 0) {
@@ -78,8 +84,30 @@ export const exportToExcel = async (
 
       console.log(`Processing sheet ${sheetIndex + 1}/${totalSheets} with ${sheetData.length} rows`);
 
+      // Calculate base progress for this sheet
+      const baseProgress = (sheetIndex / totalSheets) * 100;
+      const sheetProgressWeight = 100 / totalSheets;
+
       // Process data in chunks to avoid stack overflow
-      const formattedData = await processDataInChunks(sheetData, columns);
+      const formattedData = await processDataInChunks(
+        sheetData, 
+        columns, 
+        CHUNK_SIZE,
+        (processed, total) => {
+          // Calculate progress within this sheet
+          const sheetProgress = (processed / total) * sheetProgressWeight;
+          const totalProgress = baseProgress + sheetProgress;
+          
+          if (onProgress) {
+            onProgress({
+              percentage: Math.round(totalProgress),
+              timeRemaining: calculateTimeRemaining(startTime, totalProgress),
+              currentSheet: sheetIndex + 1,
+              totalSheets
+            });
+          }
+        }
+      );
 
       // Create worksheet with better memory management
       const ws = XLSX.utils.json_to_sheet(formattedData, {
@@ -104,7 +132,7 @@ export const exportToExcel = async (
       const sheetName = totalSheets > 1 ? `Data_Part_${sheetIndex + 1}` : 'Data';
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-      // Report progress
+      // Report final sheet progress
       if (onProgress) {
         const progress = ((sheetIndex + 1) / totalSheets) * 100;
         onProgress({
