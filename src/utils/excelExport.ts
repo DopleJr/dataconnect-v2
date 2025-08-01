@@ -12,11 +12,13 @@ const ROWS_PER_SHEET = 100000; // Reduced from 500k to 100k for better memory ma
 const CHUNK_SIZE = 5000; // Process data in smaller chunks
 
 export const calculateTimeRemaining = (startTime: number, progress: number): string => {
-  if (progress === 0) return 'Calculating...';
+  if (progress === 0 || progress >= 100) return 'Calculating...';
   
   const elapsedTime = Date.now() - startTime;
   const estimatedTotalTime = (elapsedTime / progress) * 100;
   const remainingTime = estimatedTotalTime - elapsedTime;
+  
+  if (remainingTime <= 0) return 'Almost done...';
   
   const seconds = Math.ceil(remainingTime / 1000);
   if (seconds < 60) return `${seconds}s`;
@@ -84,9 +86,9 @@ export const exportToExcel = async (
 
       console.log(`Processing sheet ${sheetIndex + 1}/${totalSheets} with ${sheetData.length} rows`);
 
-      // Calculate base progress for this sheet
-      const baseProgress = (sheetIndex / totalSheets) * 100;
-      const sheetProgressWeight = 100 / totalSheets;
+      // Calculate progress more accurately
+      const totalRecordsProcessed = start; // Records processed before this sheet
+      const baseProgressPercentage = (totalRecordsProcessed / data.length) * 100;
 
       // Process data in chunks to avoid stack overflow
       const formattedData = await processDataInChunks(
@@ -94,14 +96,15 @@ export const exportToExcel = async (
         columns, 
         CHUNK_SIZE,
         (processed, total) => {
-          // Calculate progress within this sheet
-          const sheetProgress = (processed / total) * sheetProgressWeight;
-          const totalProgress = baseProgress + sheetProgress;
+          // Calculate overall progress based on total data
+          const recordsProcessedInSheet = processed;
+          const totalRecordsProcessedSoFar = totalRecordsProcessed + recordsProcessedInSheet;
+          const overallProgress = (totalRecordsProcessedSoFar / data.length) * 100;
           
           if (onProgress) {
             onProgress({
-              percentage: Math.round(totalProgress),
-              timeRemaining: calculateTimeRemaining(startTime, totalProgress),
+              percentage: Math.round(Math.min(overallProgress, 99)), // Cap at 99% until complete
+              timeRemaining: calculateTimeRemaining(startTime, overallProgress),
               currentSheet: sheetIndex + 1,
               totalSheets
             });
@@ -132,16 +135,6 @@ export const exportToExcel = async (
       const sheetName = totalSheets > 1 ? `Data_Part_${sheetIndex + 1}` : 'Data';
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-      // Report final sheet progress
-      if (onProgress) {
-        const progress = ((sheetIndex + 1) / totalSheets) * 100;
-        onProgress({
-          percentage: Math.round(progress),
-          timeRemaining: calculateTimeRemaining(startTime, progress),
-          currentSheet: sheetIndex + 1,
-          totalSheets
-        });
-      }
 
       // Allow UI to update and prevent browser freeze
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -150,6 +143,16 @@ export const exportToExcel = async (
       if (typeof window !== 'undefined' && (window as any).gc) {
         (window as any).gc();
       }
+    }
+
+    // Final progress update - 100% complete
+    if (onProgress) {
+      onProgress({
+        percentage: 100,
+        timeRemaining: '0s',
+        currentSheet: totalSheets,
+        totalSheets
+      });
     }
 
     // Generate filename with timestamp

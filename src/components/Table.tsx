@@ -375,7 +375,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               <div className="flex justify-between text-sm text-blue-600">
                 <span>
                   Sheet {autoDownloadProgress.currentSheet} of {autoDownloadProgress.totalSheets}
-                  {autoDownloadProgress.percentage < 100 && ' - Processing chunks...'}
+                  {autoDownloadProgress.percentage < 100 ? ' - Processing chunks...' : ' - Finalizing...'}
                 </span>
                 <span>{autoDownloadProgress.timeRemaining} remaining</span>
               </div>
