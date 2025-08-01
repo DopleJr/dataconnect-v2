@@ -260,7 +260,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
         const formattedData = sheetData.map(row => {
           const exportRow: { [key: string]: any } = {};
           columns.forEach(col => {
-            exportRow[col.label] = row[col.key];
+            exportRow[col.label] = row[col.key] !== null && row[col.key] !== undefined ? row[col.key] : '';
           });
           return exportRow;
         });

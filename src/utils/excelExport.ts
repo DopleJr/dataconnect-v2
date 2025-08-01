@@ -42,7 +42,7 @@ const processDataInChunks = async (
     const processedChunk = chunk.map(row => {
       const exportRow: { [key: string]: any } = {};
       columns.forEach(col => {
-        exportRow[col.label] = row[col.key] || '';
+        exportRow[col.label] = row[col.key] !== null && row[col.key] !== undefined ? row[col.key] : '';
       });
       return exportRow;
     });
