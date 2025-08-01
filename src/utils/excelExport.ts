@@ -143,11 +143,12 @@ export const exportToExcel = async (
 export const exportLargeDataset = async (
   data: any[],
   columns: Column[],
-  tableName: string
+  tableName: string,
+  onProgress?: (progress: ExportProgress) => void
 ): Promise<void> => {
   console.log(`Exporting large dataset: ${data.length} records`);
   const filename = `${tableName.toLowerCase().replace(/\s+/g, '_')}_large_dataset`;
-  await exportToExcel(data, columns, filename);
+  await exportToExcel(data, columns, filename, onProgress);
 };
 
 export const exportDirectDownload = async (

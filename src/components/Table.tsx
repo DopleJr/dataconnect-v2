@@ -58,6 +58,7 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [hasData, setHasData] = useState(false);
   const [columnFilters, setColumnFilters] = useState<ColumnFilter>({});
+  const [autoDownloadProgress, setAutoDownloadProgress] = useState<ExportProgress | null>(null);
 
   // Apply column filters to data
   const filteredData = React.useMemo(() => {
@@ -114,9 +115,9 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
 
       // If more than 10k records, auto-download to Excel
       if (totalRecords > 10000) {
-        toast(`Found ${totalRecords.toLocaleString()} records. Downloading to Excel automatically...`, {
+        const toastId = toast(`Found ${totalRecords.toLocaleString()} records. Downloading to Excel automatically...`, {
           icon: 'ℹ️',
-          duration: 4000,
+          duration: 0, // Keep toast visible during download
         });
         
         // Get all data for download
@@ -132,9 +133,14 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
         if (downloadResponse.data && downloadResponse.data.length > 0) {
           // Import and use the export utility
           const { exportLargeDataset } = await import('../utils/excelExport');
-          await exportLargeDataset(downloadResponse.data, columns, title);
+          await exportLargeDataset(downloadResponse.data, columns, title, setAutoDownloadProgress);
+          
+          // Dismiss the info toast and show success
+          toast.dismiss(toastId);
           toast.success(`Downloaded ${downloadResponse.data.length.toLocaleString()} records to Excel`);
         }
+        
+        setAutoDownloadProgress(null);
 
         // Don't load data into table
         setAllData([]);
@@ -352,6 +358,26 @@ const Table: React.FC<TableProps> = ({ columns, title, type }) => {
               </div>
             </div>
           </div>
+
+          {/* Auto Download Progress */}
+          {autoDownloadProgress && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-blue-800">Preparing Excel Download</h3>
+                <span className="text-sm text-blue-600">{autoDownloadProgress.percentage}%</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${autoDownloadProgress.percentage}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-sm text-blue-600">
+                <span>Processing sheet {autoDownloadProgress.currentSheet} of {autoDownloadProgress.totalSheets}</span>
+                <span>{autoDownloadProgress.timeRemaining} remaining</span>
+              </div>
+            </div>
+          )}
 
           <AdvancedSearchModal
             isOpen={isSearchModalOpen}
