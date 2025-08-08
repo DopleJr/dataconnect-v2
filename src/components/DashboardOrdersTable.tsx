@@ -149,8 +149,43 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
 
   // Filter and sort data
   const processedData = useMemo(() => {
-    // Data is already filtered by the API, just sort it
-    let filtered = [...data];
+    // Group data by creation date and merge
+    const groupedByDate = data.reduce((acc, item) => {
+      const date = item.CREATION_DATE;
+      if (!acc[date]) {
+        acc[date] = {
+          CREATION_DATE: date,
+          ORDER_TYPE: 'MERGED', // Indicate this is a merged row
+          Released_Ord: 0,
+          Allocated_Ord: 0,
+          Packed_Ord: 0,
+          Shipped_Ord: 0,
+          Released_Qty: 0,
+          Allocated_Qty: 0,
+          Packed_Qty: 0,
+          Shipped_Qty: 0,
+          Total_Order: 0,
+          Total_Qty: 0
+        };
+      }
+      
+      // Sum all the values for the same date
+      acc[date].Released_Ord += item.Released_Ord;
+      acc[date].Allocated_Ord += item.Allocated_Ord;
+      acc[date].Packed_Ord += item.Packed_Ord;
+      acc[date].Shipped_Ord += item.Shipped_Ord;
+      acc[date].Released_Qty += item.Released_Qty;
+      acc[date].Allocated_Qty += item.Allocated_Qty;
+      acc[date].Packed_Qty += item.Packed_Qty;
+      acc[date].Shipped_Qty += item.Shipped_Qty;
+      acc[date].Total_Order += item.Total_Order;
+      acc[date].Total_Qty += item.Total_Qty;
+      
+      return acc;
+    }, {} as Record<string, OrderData>);
+
+    // Convert back to array
+    let filtered = Object.values(groupedByDate);
 
     return filtered.sort((a, b) => {
       let aValue = a[sortField];
@@ -202,6 +237,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
 
   const getOrderTypeColor = (orderType: string) => {
     const colors = {
+      'MERGED': 'bg-gray-100 text-gray-800 font-bold',
       'B2C_COM': 'bg-blue-100 text-blue-800',
       'B2C_SHP': 'bg-green-100 text-green-800',
       'B2C_ZLR': 'bg-purple-100 text-purple-800',
@@ -336,105 +372,121 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     try {
       setIsCapturing(true);
       
-      const dashboardElement = document.getElementById('dashboard-container');
+      // Try multiple ways to find the dashboard element
+      let dashboardElement = document.getElementById('dashboard-container');
+      
+      if (!dashboardElement) {
+        dashboardElement = document.querySelector('[data-dashboard="true"]');
+      }
+      
+      if (!dashboardElement) {
+        dashboardElement = document.querySelector('.bg-white.rounded-xl.shadow-lg');
+      }
+      
       if (!dashboardElement) {
         toast.error('Dashboard element not found');
         return;
       }
 
-      // Wait a bit for any animations to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('Found dashboard element:', dashboardElement);
+      console.log('Element dimensions:', {
+        width: dashboardElement.offsetWidth,
+        height: dashboardElement.offsetHeight,
+        scrollWidth: dashboardElement.scrollWidth,
+        scrollHeight: dashboardElement.scrollHeight
+      });
 
-      // Capture the dashboard as canvas with improved settings
+      // Scroll to top and ensure element is visible
+      window.scrollTo(0, 0);
+      dashboardElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+      
+      // Wait longer for content to fully render
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Capture with more robust settings
       const canvas = await html2canvas(dashboardElement, {
-        scale: 2, // High resolution
+        scale: 1, // Reduced scale for better compatibility
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
-        foreignObjectRendering: true,
+        foreignObjectRendering: false, // Disable for better compatibility
         logging: false,
-        width: dashboardElement.scrollWidth,
-        height: dashboardElement.scrollHeight,
+        width: dashboardElement.offsetWidth,
+        height: dashboardElement.offsetHeight,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight,
-        ignoreElements: (element) => {
-          // Ignore elements that might cause rendering issues
-          return element.classList.contains('animate-spin') || 
-                 element.classList.contains('animate-pulse');
-        },
+        x: dashboardElement.offsetLeft,
+        y: dashboardElement.offsetTop,
         onclone: (clonedDoc) => {
-          // Ensure all styles are properly applied to the cloned document
           const clonedElement = clonedDoc.getElementById('dashboard-container');
           if (clonedElement) {
-            // Force specific styles that might not be captured properly
-            clonedElement.style.fontFamily = 'ui-sans-serif, system-ui, sans-serif';
-            clonedElement.style.fontSize = '14px';
-            clonedElement.style.lineHeight = '1.5';
+            // Force visibility and basic styles
+            clonedElement.style.visibility = 'visible';
+            clonedElement.style.display = 'block';
+            clonedElement.style.position = 'relative';
+            clonedElement.style.backgroundColor = '#ffffff';
             
-            // Ensure background colors are preserved
-            const cards = clonedElement.querySelectorAll('.bg-white');
-            cards.forEach(card => {
-              (card as HTMLElement).style.backgroundColor = '#ffffff';
+            // Force all child elements to be visible
+            const allElements = clonedElement.querySelectorAll('*');
+            allElements.forEach(el => {
+              const element = el as HTMLElement;
+              element.style.visibility = 'visible';
+              element.style.display = element.style.display === 'none' ? 'block' : element.style.display;
+              
+              // Apply Tailwind color mappings
+              if (element.classList.contains('bg-white')) element.style.backgroundColor = '#ffffff';
+              if (element.classList.contains('bg-gray-50')) element.style.backgroundColor = '#f9fafb';
+              if (element.classList.contains('bg-gray-100')) element.style.backgroundColor = '#f3f4f6';
+              if (element.classList.contains('text-gray-900')) element.style.color = '#111827';
+              if (element.classList.contains('text-gray-800')) element.style.color = '#1f2937';
+              if (element.classList.contains('text-gray-700')) element.style.color = '#374151';
+              if (element.classList.contains('text-gray-600')) element.style.color = '#4b5563';
+              if (element.classList.contains('text-gray-500')) element.style.color = '#6b7280';
+              if (element.classList.contains('text-white')) element.style.color = '#ffffff';
+              if (element.classList.contains('border-gray-200')) element.style.borderColor = '#e5e7eb';
+              if (element.classList.contains('border-gray-100')) element.style.borderColor = '#f3f4f6';
+              
+              // Handle gradients
+              if (element.classList.contains('bg-gradient-to-r') && 
+                  element.classList.contains('from-blue-600') && 
+                  element.classList.contains('to-blue-700')) {
+                element.style.background = 'linear-gradient(to right, #2563eb, #1d4ed8)';
+                element.style.color = '#ffffff';
+              }
+              
+              // Handle shadows
+              if (element.classList.contains('shadow-lg')) {
+                element.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)';
+              }
+              if (element.classList.contains('shadow')) {
+                element.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)';
+              }
+              
+              // Handle rounded corners
+              if (element.classList.contains('rounded-xl')) element.style.borderRadius = '0.75rem';
+              if (element.classList.contains('rounded-lg')) element.style.borderRadius = '0.5rem';
+              if (element.classList.contains('rounded-full')) element.style.borderRadius = '9999px';
             });
             
-            // Ensure gradient backgrounds are preserved
-            const gradients = clonedElement.querySelectorAll('.bg-gradient-to-r');
-            gradients.forEach(gradient => {
-              (gradient as HTMLElement).style.background = 'linear-gradient(to right, #2563eb, #1d4ed8)';
-              (gradient as HTMLElement).style.color = '#ffffff';
-            });
-            
-            // Ensure table styling is preserved
+            // Ensure tables render properly
             const tables = clonedElement.querySelectorAll('table');
             tables.forEach(table => {
               (table as HTMLElement).style.borderCollapse = 'collapse';
               (table as HTMLElement).style.width = '100%';
             });
-            
-            // Ensure border colors are preserved
-            const borders = clonedElement.querySelectorAll('.border-gray-200, .border-gray-100');
-            borders.forEach(border => {
-              (border as HTMLElement).style.borderColor = '#e5e7eb';
-            });
-            
-            // Ensure text colors are preserved
-            const textElements = clonedElement.querySelectorAll('.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500');
-            textElements.forEach(text => {
-              if (text.classList.contains('text-gray-900')) (text as HTMLElement).style.color = '#111827';
-              if (text.classList.contains('text-gray-800')) (text as HTMLElement).style.color = '#1f2937';
-              if (text.classList.contains('text-gray-700')) (text as HTMLElement).style.color = '#374151';
-              if (text.classList.contains('text-gray-600')) (text as HTMLElement).style.color = '#4b5563';
-              if (text.classList.contains('text-gray-500')) (text as HTMLElement).style.color = '#6b7280';
-            });
-            
-            // Ensure white text is preserved
-            const whiteText = clonedElement.querySelectorAll('.text-white');
-            whiteText.forEach(text => {
-              (text as HTMLElement).style.color = '#ffffff';
-            });
-            
-            // Ensure rounded corners are preserved
-            const rounded = clonedElement.querySelectorAll('.rounded-lg, .rounded-xl, .rounded-full');
-            rounded.forEach(element => {
-              if (element.classList.contains('rounded-xl')) (element as HTMLElement).style.borderRadius = '0.75rem';
-              if (element.classList.contains('rounded-lg')) (element as HTMLElement).style.borderRadius = '0.5rem';
-              if (element.classList.contains('rounded-full')) (element as HTMLElement).style.borderRadius = '9999px';
-            });
-            
-            // Ensure shadows are preserved
-            const shadows = clonedElement.querySelectorAll('.shadow-lg, .shadow');
-            shadows.forEach(shadow => {
-              if (shadow.classList.contains('shadow-lg')) {
-                (shadow as HTMLElement).style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)';
-              } else if (shadow.classList.contains('shadow')) {
-                (shadow as HTMLElement).style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)';
-              }
-            });
           }
         }
       });
+
+      console.log('Canvas created:', {
+        width: canvas.width,
+        height: canvas.height
+      });
+
+      // Check if canvas has content
+      if (canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Canvas has no content - element may not be visible');
+      }
 
       // Try to copy to clipboard first
       if (navigator.clipboard && canvas.toBlob) {
