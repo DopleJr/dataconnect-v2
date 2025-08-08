@@ -69,9 +69,21 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   ];
 
   // Get unique values for filters
-  const uniqueOrderTypes = useMemo(() => 
-    [...new Set(data.map(item => item.ORDER_TYPE))].sort(), [data]
-  );
+  const uniqueOrderTypes = useMemo(() => {
+    // Define all possible order types
+    const allOrderTypes = [
+      'TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM', 
+      'B2B_C', 'B2B_A', 'B2B_MGR', 'B2B_M', 'TO_B2C'
+    ];
+    
+    // Get order types from current data
+    const dataOrderTypes = [...new Set(data.map(item => item.ORDER_TYPE))];
+    
+    // Combine and deduplicate, keeping all possible types
+    const combinedTypes = [...new Set([...allOrderTypes, ...dataOrderTypes])];
+    
+    return combinedTypes.sort();
+  }, [data]);
 
   // Fetch data from API
   const fetchOrderSummary = async () => {
