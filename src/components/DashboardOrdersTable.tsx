@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check, Shirt, Truck } from 'lucide-react';
+import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check, Shirt, Truck, RefreshCw } from 'lucide-react';
 import { getOrderSummary } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -50,6 +50,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     'Shipped_Ord', 'Released_Qty', 'Allocated_Qty', 'Packed_Qty', 'Shipped_Qty', 
     'Total_Order', 'Total_Qty'
   ]));
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Define all available columns
   const allColumns = [
@@ -98,6 +99,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       setTotalRecords(0);
     } finally {
       setLoading(false);
+      setIsManualRefreshing(false);
     }
   };
 
@@ -247,6 +249,15 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     startDate !== getCurrentDate() || 
     endDate !== getCurrentDate();
 
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    await fetchOrderSummary();
+    toast.success('Data refreshed manually', {
+      duration: 2000,
+      icon: '🔄'
+    });
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
       {/* Header */}
@@ -257,6 +268,17 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
             <h2 className="text-xl font-bold text-white">{title}</h2>
           </div>
           <div className="text-white text-sm flex items-center space-x-4">
+            <button
+              onClick={handleManualRefresh}
+              disabled={loading || isManualRefreshing}
+              className="flex items-center space-x-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh data manually"
+            >
+              <RefreshCw className={`h-4 w-4 ${isManualRefreshing ? 'animate-spin' : ''}`} />
+              <span className="text-sm">
+                {isManualRefreshing ? 'Refreshing...' : 'Refresh'}
+              </span>
+            </button>
             <span>{loading ? 'Loading...' : `${summaryStats.recordCount} records`}</span>
             <span className="text-xs opacity-75">
               Last updated: {lastRefresh.toLocaleTimeString()}
