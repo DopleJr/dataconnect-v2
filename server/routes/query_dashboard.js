@@ -21,7 +21,7 @@ router.get('/order-summary', async (req, res, next) => {
     // Base conditions
     whereConditions.push(`out1.BUSINESS_UNIT_ID = 'CID001683'`);
     whereConditions.push(`out2.MINIMUM_STATUS IN ('1000', '2090', '7200', '8000', '9000')`);
-    whereConditions.push(`out2.ORDER_TYPE IN ('TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM')`);
+    whereConditions.push(`out2.ORDER_TYPE IN ('TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM', 'B2B_C', 'B2B_A', 'B2B_MGR', 'B2B_M', 'TO_B2C')`);
 
     // Date range filter
     if (startDate) {

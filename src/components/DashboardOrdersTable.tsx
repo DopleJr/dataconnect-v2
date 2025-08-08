@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check } from 'lucide-react';
+import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check, Shirt, Truck } from 'lucide-react';
 import { getOrderSummary } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -28,16 +28,23 @@ type SortDirection = 'asc' | 'desc';
 const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({ 
   title = "Order Summary Dashboard" 
 }) => {
+  // Get current date in YYYY-MM-DD format
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const [data, setData] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRecords, setTotalRecords] = useState(0);
   const [sortField, setSortField] = useState<SortField>('CREATION_DATE');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedOrderTypes, setSelectedOrderTypes] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>(getCurrentDate());
+  const [endDate, setEndDate] = useState<string>(getCurrentDate());
   const [showOrderTypeDropdown, setShowOrderTypeDropdown] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
     'CREATION_DATE', 'ORDER_TYPE', 'Released_Ord', 'Allocated_Ord', 'Packed_Ord', 
     'Shipped_Ord', 'Released_Qty', 'Allocated_Qty', 'Packed_Qty', 'Shipped_Qty', 
@@ -56,8 +63,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     { key: 'Allocated_Qty', label: 'Allocated Qty', icon: TrendingDown },
     { key: 'Packed_Qty', label: 'Packed Qty', icon: TrendingDown },
     { key: 'Shipped_Qty', label: 'Shipped Qty', icon: TrendingDown },
-    { key: 'Total_Order', label: 'Total Order', icon: Filter },
-    { key: 'Total_Qty', label: 'Total Qty', icon: Filter }
+    { key: 'Total_Order', label: 'Total Order', icon: Shirt },
+    { key: 'Total_Qty', label: 'Total Qty', icon: Shirt }
   ];
 
   // Get unique values for filters
@@ -79,6 +86,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       
       setData(response.data);
       setTotalRecords(response.total);
+      setLastRefresh(new Date());
       
       if (response.data.length === 0) {
         toast.info('No data found for the selected criteria');
@@ -97,6 +105,19 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   useEffect(() => {
     fetchOrderSummary();
   }, []);
+
+  // Auto-refresh every 3 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrderSummary();
+      toast.success('Data refreshed automatically', {
+        duration: 2000,
+        icon: '🔄'
+      });
+    }, 3 * 60 * 1000); // 3 minutes in milliseconds
+
+    return () => clearInterval(interval);
+  }, [startDate, endDate, selectedOrderTypes]);
 
   // Refetch when filters change
   useEffect(() => {
@@ -130,16 +151,16 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
+    const totalAllocated = processedData.reduce((sum, item) => sum + item.Allocated_Ord, 0);
     const totalOrders = processedData.reduce((sum, item) => sum + item.Total_Order, 0);
     const totalQty = processedData.reduce((sum, item) => sum + item.Total_Qty, 0);
     const totalShipped = processedData.reduce((sum, item) => sum + item.Shipped_Ord, 0);
-    const totalAllocated = processedData.reduce((sum, item) => sum + item.Allocated_Ord, 0);
     
     return {
+      totalAllocated: totalAllocated.toLocaleString(),
       totalOrders: totalOrders.toLocaleString(),
       totalQty: totalQty.toLocaleString(),
       totalShipped: totalShipped.toLocaleString(),
-      totalAllocated: totalAllocated.toLocaleString(),
       recordCount: processedData.length
     };
   }, [processedData]);
@@ -165,7 +186,12 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       'B2C_COM': 'bg-blue-100 text-blue-800',
       'B2C_SHP': 'bg-green-100 text-green-800',
       'B2C_ZLR': 'bg-purple-100 text-purple-800',
-      'TO_B2B': 'bg-orange-100 text-orange-800'
+      'TO_B2B': 'bg-orange-100 text-orange-800',
+      'TO_B2C': 'bg-pink-100 text-pink-800',
+      'B2B_C': 'bg-indigo-100 text-indigo-800',
+      'B2B_A': 'bg-yellow-100 text-yellow-800',
+      'B2B_MGR': 'bg-red-100 text-red-800',
+      'B2B_M': 'bg-teal-100 text-teal-800'
     };
     return colors[orderType as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -213,11 +239,13 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
 
   const clearAllFilters = () => {
     setSelectedOrderTypes([]);
-    setStartDate('');
-    setEndDate('');
+    setStartDate(getCurrentDate());
+    setEndDate(getCurrentDate());
   };
 
-  const hasActiveFilters = selectedOrderTypes.length > 0 || startDate || endDate;
+  const hasActiveFilters = selectedOrderTypes.length > 0 || 
+    startDate !== getCurrentDate() || 
+    endDate !== getCurrentDate();
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
@@ -228,8 +256,11 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
             <Package className="h-6 w-6 text-white" />
             <h2 className="text-xl font-bold text-white">{title}</h2>
           </div>
-          <div className="text-white text-sm">
-            {loading ? 'Loading...' : `${summaryStats.recordCount} records`}
+          <div className="text-white text-sm flex items-center space-x-4">
+            <span>{loading ? 'Loading...' : `${summaryStats.recordCount} records`}</span>
+            <span className="text-xs opacity-75">
+              Last updated: {lastRefresh.toLocaleTimeString()}
+            </span>
           </div>
         </div>
       </div>
@@ -247,43 +278,47 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           </div>
         ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalOrders}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-blue-500" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalQty}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Shipped</p>
-                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalShipped}</p>
-              </div>
-              <TrendingDown className="h-8 w-8 text-purple-500" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
+          {/* 1. Total Allocated */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200 order-1">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Allocated</p>
                 <p className="text-2xl font-bold text-gray-900">{summaryStats.totalAllocated}</p>
               </div>
               <Filter className="h-8 w-8 text-orange-500" />
+            </div>
+          </div>
+          
+          {/* 2. Total Orders */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200 order-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalOrders}</p>
+              </div>
+              <Shirt className="h-8 w-8 text-blue-500" />
+            </div>
+          </div>
+          
+          {/* 3. Total Quantity */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200 order-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Quantity</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalQty}</p>
+              </div>
+              <Shirt className="h-8 w-8 text-green-500" />
+            </div>
+          </div>
+          
+          {/* 4. Total Shipped */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200 order-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Shipped</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalShipped}</p>
+              </div>
+              <Truck className="h-8 w-8 text-purple-500" />
             </div>
           </div>
         </div>
@@ -555,7 +590,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
             Showing {processedData.length} of {totalRecords} total records
           </span>
           <span>
-            Last updated: {new Date().toLocaleTimeString()}
+            Last updated: {lastRefresh.toLocaleTimeString()} • Auto-refresh: 3min
           </span>
         </div>
       </div>
