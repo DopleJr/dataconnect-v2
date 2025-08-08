@@ -484,7 +484,16 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   };
 
   return (
-    <div id="dashboard-container" className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+    <div 
+      id="dashboard-container" 
+      data-dashboard="true"
+      className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100"
+      style={{ 
+        minHeight: '600px',
+        position: 'relative',
+        zIndex: 1
+      }}
+    >
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
         <div className="flex items-center justify-between">
