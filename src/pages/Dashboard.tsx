@@ -6,36 +6,16 @@ import DashboardOrdersTable from '../components/DashboardOrdersTable';
 
 // Sample data - replace with actual API call
 const sampleOrderData = [
-  { CREATION_DATE: '2025-01-08', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 57, SUM_ORDER: 141 },
-  { CREATION_DATE: '2025-01-08', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 1114, SUM_ORDER: 1791 },
-  { CREATION_DATE: '2025-01-08', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 322, SUM_ORDER: 654 },
-  { CREATION_DATE: '2025-01-09', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 78, SUM_ORDER: 186 },
-  { CREATION_DATE: '2025-01-09', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 1226, SUM_ORDER: 2118 },
-  { CREATION_DATE: '2025-01-09', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 479, SUM_ORDER: 1213 },
-  { CREATION_DATE: '2025-01-10', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 86, SUM_ORDER: 187 },
-  { CREATION_DATE: '2025-01-10', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 538, SUM_ORDER: 944 },
-  { CREATION_DATE: '2025-01-10', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 476, SUM_ORDER: 1080 },
-  { CREATION_DATE: '2025-01-11', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 88, SUM_ORDER: 242 },
-  { CREATION_DATE: '2025-01-11', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 2123, SUM_ORDER: 3417 },
-  { CREATION_DATE: '2025-01-11', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 398, SUM_ORDER: 870 },
-  { CREATION_DATE: '2025-01-12', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 80, SUM_ORDER: 221 },
-  { CREATION_DATE: '2025-01-12', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 1186, SUM_ORDER: 1947 },
-  { CREATION_DATE: '2025-01-12', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 405, SUM_ORDER: 919 },
-  { CREATION_DATE: '2025-01-12', ORDER_TYPE: 'TO_B2B', DO_DESC: 'Shipped', COUNT_ORDER: 4, SUM_ORDER: 8298 },
-  { CREATION_DATE: '2025-01-13', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 73, SUM_ORDER: 188 },
-  { CREATION_DATE: '2025-01-13', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 897, SUM_ORDER: 1410 },
-  { CREATION_DATE: '2025-01-13', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 379, SUM_ORDER: 858 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Allocated', COUNT_ORDER: 24, SUM_ORDER: 95 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 47, SUM_ORDER: 86 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Shipped', COUNT_ORDER: 1093, SUM_ORDER: 1700 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Allocated', COUNT_ORDER: 1, SUM_ORDER: 5 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Packed', COUNT_ORDER: 7, SUM_ORDER: 16 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'B2C_ZLR', DO_DESC: 'Shipped', COUNT_ORDER: 292, SUM_ORDER: 575 },
-  { CREATION_DATE: '2025-01-14', ORDER_TYPE: 'TO_B2B', DO_DESC: 'Shipped', COUNT_ORDER: 1, SUM_ORDER: 10 },
-  { CREATION_DATE: '2025-01-15', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Allocated', COUNT_ORDER: 128, SUM_ORDER: 409 },
-  { CREATION_DATE: '2025-01-15', ORDER_TYPE: 'B2C_COM', DO_DESC: 'Shipped', COUNT_ORDER: 34, SUM_ORDER: 56 },
-  { CREATION_DATE: '2025-01-15', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Allocated', COUNT_ORDER: 1664, SUM_ORDER: 2842 },
-  { CREATION_DATE: '2025-01-15', ORDER_TYPE: 'B2C_SHP', DO_DESC: 'Packed', COUNT_ORDER: 25, SUM_ORDER: 38 }
+  { CREATION_DATE: '2025-08-01', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 57, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 141, Total_Order: 57, Total_Qty: 141 },
+  { CREATION_DATE: '2025-08-01', ORDER_TYPE: 'B2C_SHP', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 1114, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 1791, Total_Order: 1114, Total_Qty: 1791 },
+  { CREATION_DATE: '2025-08-01', ORDER_TYPE: 'B2C_ZLR', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 322, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 654, Total_Order: 322, Total_Qty: 654 },
+  { CREATION_DATE: '2025-08-02', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 78, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 186, Total_Order: 78, Total_Qty: 186 },
+  { CREATION_DATE: '2025-08-02', ORDER_TYPE: 'B2C_SHP', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 1226, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 2118, Total_Order: 1226, Total_Qty: 2118 },
+  { CREATION_DATE: '2025-08-02', ORDER_TYPE: 'B2C_ZLR', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 479, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 1213, Total_Order: 479, Total_Qty: 1213 },
+  { CREATION_DATE: '2025-08-07', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 24, Packed_Ord: 0, Shipped_Ord: 47, Released_Qty: 0, Allocated_Qty: 95, Packed_Qty: 0, Shipped_Qty: 86, Total_Order: 71, Total_Qty: 181 },
+  { CREATION_DATE: '2025-08-07', ORDER_TYPE: 'B2C_ZLR', Released_Ord: 0, Allocated_Ord: 1, Packed_Ord: 7, Shipped_Ord: 292, Released_Qty: 0, Allocated_Qty: 5, Packed_Qty: 16, Shipped_Qty: 575, Total_Order: 300, Total_Qty: 596 },
+  { CREATION_DATE: '2025-08-08', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 128, Packed_Ord: 0, Shipped_Ord: 34, Released_Qty: 0, Allocated_Qty: 409, Packed_Qty: 0, Shipped_Qty: 56, Total_Order: 162, Total_Qty: 465 },
+  { CREATION_DATE: '2025-08-08', ORDER_TYPE: 'B2C_SHP', Released_Ord: 0, Allocated_Ord: 1664, Packed_Ord: 25, Shipped_Ord: 0, Released_Qty: 0, Allocated_Qty: 2842, Packed_Qty: 38, Shipped_Qty: 0, Total_Order: 1689, Total_Qty: 2880 }
 ];
 
 

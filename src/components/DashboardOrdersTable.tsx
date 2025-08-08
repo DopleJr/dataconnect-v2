@@ -4,9 +4,16 @@ import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, Trending
 interface OrderData {
   CREATION_DATE: string;
   ORDER_TYPE: string;
-  DO_DESC: string;
-  COUNT_ORDER: number;
-  SUM_ORDER: number;
+  Released_Ord: number;
+  Allocated_Ord: number;
+  Packed_Ord: number;
+  Shipped_Ord: number;
+  Released_Qty: number;
+  Allocated_Qty: number;
+  Packed_Qty: number;
+  Shipped_Qty: number;
+  Total_Order: number;
+  Total_Qty: number;
 }
 
 interface DashboardOrdersTableProps {
@@ -24,19 +31,13 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   const [sortField, setSortField] = useState<SortField>('CREATION_DATE');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedOrderTypes, setSelectedOrderTypes] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [showOrderTypeDropdown, setShowOrderTypeDropdown] = useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   // Get unique values for filters
   const uniqueOrderTypes = useMemo(() => 
     [...new Set(data.map(item => item.ORDER_TYPE))].sort(), [data]
-  );
-  
-  const uniqueStatuses = useMemo(() => 
-    [...new Set(data.map(item => item.DO_DESC))].sort(), [data]
   );
 
   // Filter and sort data
@@ -48,10 +49,6 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       filtered = filtered.filter(item => selectedOrderTypes.includes(item.ORDER_TYPE));
     }
 
-    // Filter by statuses
-    if (selectedStatuses.length > 0) {
-      filtered = filtered.filter(item => selectedStatuses.includes(item.DO_DESC));
-    }
 
     // Filter by date range
     if (startDate) {
@@ -75,18 +72,20 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortField, sortDirection, selectedOrderTypes, selectedStatuses, startDate, endDate]);
+  }, [data, sortField, sortDirection, selectedOrderTypes, startDate, endDate]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
-    const totalOrders = processedData.reduce((sum, item) => sum + item.COUNT_ORDER, 0);
-    const totalSum = processedData.reduce((sum, item) => sum + item.SUM_ORDER, 0);
-    const avgOrderValue = totalOrders > 0 ? totalSum / totalOrders : 0;
+    const totalOrders = processedData.reduce((sum, item) => sum + item.Total_Order, 0);
+    const totalQty = processedData.reduce((sum, item) => sum + item.Total_Qty, 0);
+    const totalShipped = processedData.reduce((sum, item) => sum + item.Shipped_Ord, 0);
+    const totalAllocated = processedData.reduce((sum, item) => sum + item.Allocated_Ord, 0);
     
     return {
       totalOrders: totalOrders.toLocaleString(),
-      totalSum: totalSum.toLocaleString(),
-      avgOrderValue: avgOrderValue.toFixed(2),
+      totalQty: totalQty.toLocaleString(),
+      totalShipped: totalShipped.toLocaleString(),
+      totalAllocated: totalAllocated.toLocaleString(),
       recordCount: processedData.length
     };
   }, [processedData]);
@@ -117,14 +116,6 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     return colors[orderType as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      'Shipped': 'bg-green-100 text-green-800 border-green-200',
-      'Allocated': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Packed': 'bg-blue-100 text-blue-800 border-blue-200'
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -142,22 +133,14 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     );
   };
 
-  const toggleStatus = (status: string) => {
-    setSelectedStatuses(prev => 
-      prev.includes(status) 
-        ? prev.filter(s => s !== status)
-        : [...prev, status]
-    );
-  };
 
   const clearAllFilters = () => {
     setSelectedOrderTypes([]);
-    setSelectedStatuses([]);
     setStartDate('');
     setEndDate('');
   };
 
-  const hasActiveFilters = selectedOrderTypes.length > 0 || selectedStatuses.length > 0 || startDate || endDate;
+  const hasActiveFilters = selectedOrderTypes.length > 0 || startDate || endDate;
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
@@ -190,8 +173,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Sum</p>
-                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalSum}</p>
+                <p className="text-sm font-medium text-gray-600">Total Quantity</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalQty}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
@@ -200,8 +183,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
-                <p className="text-2xl font-bold text-gray-900">{summaryStats.avgOrderValue}</p>
+                <p className="text-sm font-medium text-gray-600">Total Shipped</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalShipped}</p>
               </div>
               <TrendingDown className="h-8 w-8 text-purple-500" />
             </div>
@@ -210,8 +193,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Records</p>
-                <p className="text-2xl font-bold text-gray-900">{summaryStats.recordCount}</p>
+                <p className="text-sm font-medium text-gray-600">Total Allocated</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryStats.totalAllocated}</p>
               </div>
               <Filter className="h-8 w-8 text-orange-500" />
             </div>
@@ -237,7 +220,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           </div>
           
           {/* Filter Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Date Range Filter */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-600">Date Range</label>
@@ -296,42 +279,6 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
               </div>
             </div>
 
-            {/* Status Multi-Select */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-600">Statuses</label>
-              <div className="relative">
-                <button
-                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
-                >
-                  <span className="truncate">
-                    {selectedStatuses.length === 0 
-                      ? 'All Statuses' 
-                      : `${selectedStatuses.length} selected`
-                    }
-                  </span>
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                </button>
-                
-                {showStatusDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {uniqueStatuses.map(status => (
-                      <label key={status} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedStatuses.includes(status)}
-                          onChange={() => toggleStatus(status)}
-                          className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className={`text-sm px-2 py-1 rounded-full border ${getStatusColor(status)}`}>
-                          {status}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Active Filters Display */}
@@ -345,17 +292,6 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                     <button
                       onClick={() => toggleOrderType(type)}
                       className="ml-2 hover:text-blue-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                {selectedStatuses.map(status => (
-                  <span key={status} className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                    {status}
-                    <button
-                      onClick={() => toggleStatus(status)}
-                      className="ml-2 hover:text-green-600"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -383,12 +319,11 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       </div>
 
       {/* Close dropdowns when clicking outside */}
-      {(showOrderTypeDropdown || showStatusDropdown) && (
+      {showOrderTypeDropdown && (
         <div 
           className="fixed inset-0 z-5" 
           onClick={() => {
             setShowOrderTypeDropdown(false);
-            setShowStatusDropdown(false);
           }}
         />
       )}
@@ -418,30 +353,93 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                 </div>
               </th>
               <th 
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('DO_DESC')}
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Released_Ord')}
               >
-                <div className="flex items-center space-x-1">
-                  <span>Status</span>
-                  {getSortIcon('DO_DESC')}
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Released Ord</span>
+                  {getSortIcon('Released_Ord')}
                 </div>
               </th>
               <th 
                 className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('COUNT_ORDER')}
+                onClick={() => handleSort('Allocated_Ord')}
               >
                 <div className="flex items-center justify-end space-x-1">
-                  <span>Order Count</span>
-                  {getSortIcon('COUNT_ORDER')}
+                  <span>Allocated Ord</span>
+                  {getSortIcon('Allocated_Ord')}
                 </div>
               </th>
               <th 
                 className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('SUM_ORDER')}
+                onClick={() => handleSort('Packed_Ord')}
               >
                 <div className="flex items-center justify-end space-x-1">
-                  <span>Order Sum</span>
-                  {getSortIcon('SUM_ORDER')}
+                  <span>Packed Ord</span>
+                  {getSortIcon('Packed_Ord')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Shipped_Ord')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Shipped Ord</span>
+                  {getSortIcon('Shipped_Ord')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Released_Qty')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Released Qty</span>
+                  {getSortIcon('Released_Qty')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Allocated_Qty')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Allocated Qty</span>
+                  {getSortIcon('Allocated_Qty')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Packed_Qty')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Packed Qty</span>
+                  {getSortIcon('Packed_Qty')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Shipped_Qty')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Shipped Qty</span>
+                  {getSortIcon('Shipped_Qty')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Total_Order')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Total Order</span>
+                  {getSortIcon('Total_Order')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('Total_Qty')}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Total Qty</span>
+                  {getSortIcon('Total_Qty')}
                 </div>
               </th>
             </tr>
@@ -465,18 +463,53 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(row.DO_DESC)}`}>
-                    {row.DO_DESC}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="text-sm font-semibold text-gray-900">
-                    {row.COUNT_ORDER.toLocaleString()}
+                    {row.Released_Ord.toLocaleString()}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="text-sm font-semibold text-gray-900">
-                    {row.SUM_ORDER.toLocaleString()}
+                    {row.Allocated_Ord.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Packed_Ord.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Shipped_Ord.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Released_Qty.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Allocated_Qty.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Packed_Qty.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Shipped_Qty.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Total_Order.toLocaleString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {row.Total_Qty.toLocaleString()}
                   </div>
                 </td>
               </tr>
