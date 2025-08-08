@@ -34,6 +34,28 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [showOrderTypeDropdown, setShowOrderTypeDropdown] = useState(false);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
+    'CREATION_DATE', 'ORDER_TYPE', 'Released_Ord', 'Allocated_Ord', 'Packed_Ord', 
+    'Shipped_Ord', 'Released_Qty', 'Allocated_Qty', 'Packed_Qty', 'Shipped_Qty', 
+    'Total_Order', 'Total_Qty'
+  ]));
+
+  // Define all available columns
+  const allColumns = [
+    { key: 'CREATION_DATE', label: 'Creation Date', icon: Calendar },
+    { key: 'ORDER_TYPE', label: 'Order Type', icon: Package },
+    { key: 'Released_Ord', label: 'Released Ord', icon: TrendingUp },
+    { key: 'Allocated_Ord', label: 'Allocated Ord', icon: TrendingUp },
+    { key: 'Packed_Ord', label: 'Packed Ord', icon: TrendingUp },
+    { key: 'Shipped_Ord', label: 'Shipped Ord', icon: TrendingUp },
+    { key: 'Released_Qty', label: 'Released Qty', icon: TrendingDown },
+    { key: 'Allocated_Qty', label: 'Allocated Qty', icon: TrendingDown },
+    { key: 'Packed_Qty', label: 'Packed Qty', icon: TrendingDown },
+    { key: 'Shipped_Qty', label: 'Shipped Qty', icon: TrendingDown },
+    { key: 'Total_Order', label: 'Total Order', icon: Filter },
+    { key: 'Total_Qty', label: 'Total Qty', icon: Filter }
+  ];
 
   // Get unique values for filters
   const uniqueOrderTypes = useMemo(() => 
@@ -133,6 +155,29 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     );
   };
 
+  const toggleColumn = (columnKey: string) => {
+    setVisibleColumns(prev => {
+      const newVisible = new Set(prev);
+      if (newVisible.has(columnKey)) {
+        // Don't allow hiding all columns
+        if (newVisible.size > 1) {
+          newVisible.delete(columnKey);
+        }
+      } else {
+        newVisible.add(columnKey);
+      }
+      return newVisible;
+    });
+  };
+
+  const showAllColumns = () => {
+    setVisibleColumns(new Set(allColumns.map(col => col.key)));
+  };
+
+  const hideAllColumns = () => {
+    // Keep at least Creation Date visible
+    setVisibleColumns(new Set(['CREATION_DATE']));
+  };
 
   const clearAllFilters = () => {
     setSelectedOrderTypes([]);
@@ -220,7 +265,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           </div>
           
           {/* Filter Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Date Range Filter */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-600">Date Range</label>
@@ -279,6 +324,52 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
               </div>
             </div>
 
+            {/* Column Visibility */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">Show/Hide Columns</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+                >
+                  <span className="truncate">
+                    {visibleColumns.size} of {allColumns.length} columns
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                </button>
+                
+                {showColumnDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    <div className="p-2 border-b border-gray-200 flex space-x-2">
+                      <button
+                        onClick={showAllColumns}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        Show All
+                      </button>
+                      <button
+                        onClick={hideAllColumns}
+                        className="text-xs text-red-600 hover:text-red-800"
+                      >
+                        Hide All
+                      </button>
+                    </div>
+                    {allColumns.map(column => (
+                      <label key={column.key} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns.has(column.key)}
+                          onChange={() => toggleColumn(column.key)}
+                          className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <column.icon className="h-4 w-4 mr-2 text-gray-400" />
+                        <span className="text-sm">{column.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Active Filters Display */}
@@ -319,11 +410,12 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       </div>
 
       {/* Close dropdowns when clicking outside */}
-      {showOrderTypeDropdown && (
+      {(showOrderTypeDropdown || showColumnDropdown) && (
         <div 
           className="fixed inset-0 z-5" 
           onClick={() => {
             setShowOrderTypeDropdown(false);
+            setShowColumnDropdown(false);
           }}
         />
       )}
@@ -333,115 +425,23 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th 
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('CREATION_DATE')}
-              >
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>Creation Date</span>
-                  {getSortIcon('CREATION_DATE')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('ORDER_TYPE')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>Order Type</span>
-                  {getSortIcon('ORDER_TYPE')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Released_Ord')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Released Ord</span>
-                  {getSortIcon('Released_Ord')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Allocated_Ord')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Allocated Ord</span>
-                  {getSortIcon('Allocated_Ord')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Packed_Ord')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Packed Ord</span>
-                  {getSortIcon('Packed_Ord')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Shipped_Ord')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Shipped Ord</span>
-                  {getSortIcon('Shipped_Ord')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Released_Qty')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Released Qty</span>
-                  {getSortIcon('Released_Qty')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Allocated_Qty')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Allocated Qty</span>
-                  {getSortIcon('Allocated_Qty')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Packed_Qty')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Packed Qty</span>
-                  {getSortIcon('Packed_Qty')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Shipped_Qty')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Shipped Qty</span>
-                  {getSortIcon('Shipped_Qty')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Total_Order')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Total Order</span>
-                  {getSortIcon('Total_Order')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('Total_Qty')}
-              >
-                <div className="flex items-center justify-end space-x-1">
-                  <span>Total Qty</span>
-                  {getSortIcon('Total_Qty')}
-                </div>
-              </th>
+              {allColumns.filter(col => visibleColumns.has(col.key)).map(column => (
+                <th 
+                  key={column.key}
+                  className={`px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors ${
+                    column.key === 'CREATION_DATE' || column.key === 'ORDER_TYPE' ? 'text-left' : 'text-right'
+                  }`}
+                  onClick={() => handleSort(column.key as SortField)}
+                >
+                  <div className={`flex items-center space-x-1 ${
+                    column.key === 'CREATION_DATE' || column.key === 'ORDER_TYPE' ? '' : 'justify-end'
+                  }`}>
+                    {column.key === 'CREATION_DATE' && <column.icon className="h-4 w-4" />}
+                    <span>{column.label}</span>
+                    {getSortIcon(column.key as SortField)}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -450,68 +450,27 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                 key={index} 
                 className="hover:bg-gray-50 transition-colors duration-150"
               >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatDate(row.CREATION_DATE)}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getOrderTypeColor(row.ORDER_TYPE)}`}>
-                    {row.ORDER_TYPE}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Released_Ord.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Allocated_Ord.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Packed_Ord.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Shipped_Ord.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Released_Qty.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Allocated_Qty.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Packed_Qty.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Shipped_Qty.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Total_Order.toLocaleString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {row.Total_Qty.toLocaleString()}
-                  </div>
-                </td>
+                {allColumns.filter(col => visibleColumns.has(col.key)).map(column => (
+                  <td key={column.key} className={`px-6 py-4 whitespace-nowrap ${
+                    column.key === 'CREATION_DATE' || column.key === 'ORDER_TYPE' ? '' : 'text-right'
+                  }`}>
+                    {column.key === 'CREATION_DATE' ? (
+                      <div className="flex items-center">
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatDate(row[column.key as keyof OrderData] as string)}
+                        </div>
+                      </div>
+                    ) : column.key === 'ORDER_TYPE' ? (
+                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getOrderTypeColor(row[column.key as keyof OrderData] as string)}`}>
+                        {row[column.key as keyof OrderData]}
+                      </span>
+                    ) : (
+                      <div className="text-sm font-semibold text-gray-900">
+                        {(row[column.key as keyof OrderData] as number).toLocaleString()}
+                      </div>
+                    )}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
