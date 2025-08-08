@@ -237,7 +237,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
           </div>
           
           {/* Filter Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Date Range Filter */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-600">Date Range</label>
@@ -246,14 +246,14 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Start Date"
                 />
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="End Date"
                 />
               </div>
@@ -332,35 +332,37 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Active Filters Display */}
+          {/* Active Filters Display */}
+          {hasActiveFilters && (
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-600">Active Filters</label>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-2">
                 {selectedOrderTypes.map(type => (
-                  <span key={type} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  <span key={type} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                     {type}
                     <button
                       onClick={() => toggleOrderType(type)}
-                      className="ml-1 hover:text-blue-600"
+                      className="ml-2 hover:text-blue-600"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </span>
                 ))}
                 {selectedStatuses.map(status => (
-                  <span key={status} className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                  <span key={status} className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
                     {status}
                     <button
                       onClick={() => toggleStatus(status)}
-                      className="ml-1 hover:text-green-600"
+                      className="ml-2 hover:text-green-600"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </span>
                 ))}
                 {(startDate || endDate) && (
-                  <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                  <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">
                     {startDate && endDate ? `${startDate} to ${endDate}` : 
                      startDate ? `From ${startDate}` : `Until ${endDate}`}
                     <button
@@ -368,15 +370,14 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                         setStartDate('');
                         setEndDate('');
                       }}
-                      className="ml-1 hover:text-purple-600"
+                      className="ml-2 hover:text-purple-600"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </span>
                 )}
               </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
