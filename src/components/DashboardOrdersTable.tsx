@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check } from 'lucide-react';
 
 interface OrderData {
   CREATION_DATE: string;
@@ -23,8 +23,12 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
 }) => {
   const [sortField, setSortField] = useState<SortField>('CREATION_DATE');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [filterOrderType, setFilterOrderType] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [selectedOrderTypes, setSelectedOrderTypes] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [showOrderTypeDropdown, setShowOrderTypeDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   // Get unique values for filters
   const uniqueOrderTypes = useMemo(() => 
@@ -39,12 +43,22 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   const processedData = useMemo(() => {
     let filtered = data;
 
-    if (filterOrderType) {
-      filtered = filtered.filter(item => item.ORDER_TYPE === filterOrderType);
+    // Filter by order types
+    if (selectedOrderTypes.length > 0) {
+      filtered = filtered.filter(item => selectedOrderTypes.includes(item.ORDER_TYPE));
     }
 
-    if (filterStatus) {
-      filtered = filtered.filter(item => item.DO_DESC === filterStatus);
+    // Filter by statuses
+    if (selectedStatuses.length > 0) {
+      filtered = filtered.filter(item => selectedStatuses.includes(item.DO_DESC));
+    }
+
+    // Filter by date range
+    if (startDate) {
+      filtered = filtered.filter(item => item.CREATION_DATE >= startDate);
+    }
+    if (endDate) {
+      filtered = filtered.filter(item => item.CREATION_DATE <= endDate);
     }
 
     return filtered.sort((a, b) => {
@@ -61,7 +75,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortField, sortDirection, filterOrderType, filterStatus]);
+  }, [data, sortField, sortDirection, selectedOrderTypes, selectedStatuses, startDate, endDate]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -119,6 +133,31 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       year: 'numeric'
     });
   };
+
+  const toggleOrderType = (orderType: string) => {
+    setSelectedOrderTypes(prev => 
+      prev.includes(orderType) 
+        ? prev.filter(type => type !== orderType)
+        : [...prev, orderType]
+    );
+  };
+
+  const toggleStatus = (status: string) => {
+    setSelectedStatuses(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedOrderTypes([]);
+    setSelectedStatuses([]);
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const hasActiveFilters = selectedOrderTypes.length > 0 || selectedStatuses.length > 0 || startDate || endDate;
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
@@ -182,48 +221,176 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
 
       {/* Filters */}
       <div className="px-6 py-4 bg-white border-b border-gray-200">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="space-y-4">
+          {/* Filter Header */}
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">Filters:</span>
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="text-sm text-red-600 hover:text-red-800 transition-colors"
+              >
+                Clear All Filters
+              </button>
+            )}
           </div>
           
-          <select
-            value={filterOrderType}
-            onChange={(e) => setFilterOrderType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Order Types</option>
-            {uniqueOrderTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-          
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Statuses</option>
-            {uniqueStatuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-          
-          {(filterOrderType || filterStatus) && (
-            <button
-              onClick={() => {
-                setFilterOrderType('');
-                setFilterStatus('');
-              }}
-              className="px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              Clear Filters
-            </button>
-          )}
+          {/* Filter Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Date Range Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">Date Range</label>
+              <div className="flex space-x-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Start Date"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="End Date"
+                />
+              </div>
+            </div>
+
+            {/* Order Type Multi-Select */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">Order Types</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowOrderTypeDropdown(!showOrderTypeDropdown)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+                >
+                  <span className="truncate">
+                    {selectedOrderTypes.length === 0 
+                      ? 'All Order Types' 
+                      : `${selectedOrderTypes.length} selected`
+                    }
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                </button>
+                
+                {showOrderTypeDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {uniqueOrderTypes.map(type => (
+                      <label key={type} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderTypes.includes(type)}
+                          onChange={() => toggleOrderType(type)}
+                          className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className={`text-sm px-2 py-1 rounded-full ${getOrderTypeColor(type)}`}>
+                          {type}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status Multi-Select */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">Statuses</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+                >
+                  <span className="truncate">
+                    {selectedStatuses.length === 0 
+                      ? 'All Statuses' 
+                      : `${selectedStatuses.length} selected`
+                    }
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                </button>
+                
+                {showStatusDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {uniqueStatuses.map(status => (
+                      <label key={status} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedStatuses.includes(status)}
+                          onChange={() => toggleStatus(status)}
+                          className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className={`text-sm px-2 py-1 rounded-full border ${getStatusColor(status)}`}>
+                          {status}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Active Filters Display */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">Active Filters</label>
+              <div className="flex flex-wrap gap-1">
+                {selectedOrderTypes.map(type => (
+                  <span key={type} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    {type}
+                    <button
+                      onClick={() => toggleOrderType(type)}
+                      className="ml-1 hover:text-blue-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {selectedStatuses.map(status => (
+                  <span key={status} className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    {status}
+                    <button
+                      onClick={() => toggleStatus(status)}
+                      className="ml-1 hover:text-green-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {(startDate || endDate) && (
+                  <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                    {startDate && endDate ? `${startDate} to ${endDate}` : 
+                     startDate ? `From ${startDate}` : `Until ${endDate}`}
+                    <button
+                      onClick={() => {
+                        setStartDate('');
+                        setEndDate('');
+                      }}
+                      className="ml-1 hover:text-purple-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Close dropdowns when clicking outside */}
+      {(showOrderTypeDropdown || showStatusDropdown) && (
+        <div 
+          className="fixed inset-0 z-5" 
+          onClick={() => {
+            setShowOrderTypeDropdown(false);
+            setShowStatusDropdown(false);
+          }}
+        />
+      )}
+          
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
