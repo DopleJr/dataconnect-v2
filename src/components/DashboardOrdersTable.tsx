@@ -377,6 +377,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                   </span>
                 )}
               </div>
+            </div>
           )}
         </div>
       </div>
