@@ -4,8 +4,7 @@ import { getOrderSummary } from '../services/api';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
-import html2canvas from 'html2canvas';
+
 
 interface OrderData {
   CREATION_DATE: string;
