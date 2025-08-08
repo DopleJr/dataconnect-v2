@@ -3,6 +3,7 @@ import cors from 'cors';
 import { config } from 'dotenv';
 import db from './db.js';
 import queryRoutes from './routes/query.js';
+import dashboardRoutes from './routes/query_dashboard.js';
 import os from 'os';
 
 // Load environment variables from .env file
@@ -74,6 +75,7 @@ app.get('/api/stats', (req, res) => {
 
 // Routes Query
 app.use('/api/query', queryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

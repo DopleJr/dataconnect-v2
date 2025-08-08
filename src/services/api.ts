@@ -167,7 +167,7 @@ export const getOrderSummary = async (params: {
       limit: params.limit || 1000
     };
 
-    const response = await api.get('/query/order-summary', { params: queryParams });
+    const response = await api.get('/dashboard/order-summary', { params: queryParams });
     return response.data;
   } catch (error) {
     console.error('Error fetching order summary:', error);
