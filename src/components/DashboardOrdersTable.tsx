@@ -343,12 +343,98 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
         return;
       }
 
-      // Capture the dashboard as canvas
+      // Wait a bit for any animations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture the dashboard as canvas with improved settings
       const canvas = await html2canvas(dashboardElement, {
-        scale: 2,
+        scale: 2, // High resolution
         backgroundColor: '#ffffff',
         useCORS: true,
-        allowTaint: true
+        allowTaint: true,
+        foreignObjectRendering: true,
+        logging: false,
+        width: dashboardElement.scrollWidth,
+        height: dashboardElement.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
+        ignoreElements: (element) => {
+          // Ignore elements that might cause rendering issues
+          return element.classList.contains('animate-spin') || 
+                 element.classList.contains('animate-pulse');
+        },
+        onclone: (clonedDoc) => {
+          // Ensure all styles are properly applied to the cloned document
+          const clonedElement = clonedDoc.getElementById('dashboard-container');
+          if (clonedElement) {
+            // Force specific styles that might not be captured properly
+            clonedElement.style.fontFamily = 'ui-sans-serif, system-ui, sans-serif';
+            clonedElement.style.fontSize = '14px';
+            clonedElement.style.lineHeight = '1.5';
+            
+            // Ensure background colors are preserved
+            const cards = clonedElement.querySelectorAll('.bg-white');
+            cards.forEach(card => {
+              (card as HTMLElement).style.backgroundColor = '#ffffff';
+            });
+            
+            // Ensure gradient backgrounds are preserved
+            const gradients = clonedElement.querySelectorAll('.bg-gradient-to-r');
+            gradients.forEach(gradient => {
+              (gradient as HTMLElement).style.background = 'linear-gradient(to right, #2563eb, #1d4ed8)';
+              (gradient as HTMLElement).style.color = '#ffffff';
+            });
+            
+            // Ensure table styling is preserved
+            const tables = clonedElement.querySelectorAll('table');
+            tables.forEach(table => {
+              (table as HTMLElement).style.borderCollapse = 'collapse';
+              (table as HTMLElement).style.width = '100%';
+            });
+            
+            // Ensure border colors are preserved
+            const borders = clonedElement.querySelectorAll('.border-gray-200, .border-gray-100');
+            borders.forEach(border => {
+              (border as HTMLElement).style.borderColor = '#e5e7eb';
+            });
+            
+            // Ensure text colors are preserved
+            const textElements = clonedElement.querySelectorAll('.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500');
+            textElements.forEach(text => {
+              if (text.classList.contains('text-gray-900')) (text as HTMLElement).style.color = '#111827';
+              if (text.classList.contains('text-gray-800')) (text as HTMLElement).style.color = '#1f2937';
+              if (text.classList.contains('text-gray-700')) (text as HTMLElement).style.color = '#374151';
+              if (text.classList.contains('text-gray-600')) (text as HTMLElement).style.color = '#4b5563';
+              if (text.classList.contains('text-gray-500')) (text as HTMLElement).style.color = '#6b7280';
+            });
+            
+            // Ensure white text is preserved
+            const whiteText = clonedElement.querySelectorAll('.text-white');
+            whiteText.forEach(text => {
+              (text as HTMLElement).style.color = '#ffffff';
+            });
+            
+            // Ensure rounded corners are preserved
+            const rounded = clonedElement.querySelectorAll('.rounded-lg, .rounded-xl, .rounded-full');
+            rounded.forEach(element => {
+              if (element.classList.contains('rounded-xl')) (element as HTMLElement).style.borderRadius = '0.75rem';
+              if (element.classList.contains('rounded-lg')) (element as HTMLElement).style.borderRadius = '0.5rem';
+              if (element.classList.contains('rounded-full')) (element as HTMLElement).style.borderRadius = '9999px';
+            });
+            
+            // Ensure shadows are preserved
+            const shadows = clonedElement.querySelectorAll('.shadow-lg, .shadow');
+            shadows.forEach(shadow => {
+              if (shadow.classList.contains('shadow-lg')) {
+                (shadow as HTMLElement).style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)';
+              } else if (shadow.classList.contains('shadow')) {
+                (shadow as HTMLElement).style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)';
+              }
+            });
+          }
+        }
       });
 
       // Try to copy to clipboard first
