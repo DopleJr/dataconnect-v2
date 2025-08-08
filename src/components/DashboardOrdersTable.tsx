@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check, Shirt, Truck, RefreshCw } from 'lucide-react';
+import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check, Shirt, Truck, RefreshCw, Download, Camera } from 'lucide-react';
 import { getOrderSummary } from '../services/api';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 
 interface OrderData {
   CREATION_DATE: string;
@@ -51,6 +53,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     'Total_Order', 'Total_Qty'
   ]));
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   // Define all available columns
   const allColumns = [
@@ -271,7 +275,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+    <div id="dashboard-container" className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -289,6 +293,28 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
               <RefreshCw className={`h-4 w-4 ${isManualRefreshing ? 'animate-spin' : ''}`} />
               <span className="text-sm">
                 {isManualRefreshing ? 'Refreshing...' : 'Refresh'}
+              </span>
+            </button>
+            <button
+              onClick={exportToExcel}
+              disabled={loading || isExporting || processedData.length === 0}
+              className="flex items-center space-x-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export data to Excel"
+            >
+              <Download className="h-4 w-4" />
+              <span className="text-sm">
+                {isExporting ? 'Exporting...' : 'Excel'}
+              </span>
+            </button>
+            <button
+              onClick={copyDashboardToImage}
+              disabled={isCapturing}
+              className="flex items-center space-x-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Copy dashboard as image"
+            >
+              <Camera className={`h-4 w-4 ${isCapturing ? 'animate-pulse' : ''}`} />
+              <span className="text-sm">
+                {isCapturing ? 'Capturing...' : 'Image'}
               </span>
             </button>
             <span>{loading ? 'Loading...' : `${summaryStats.recordCount} records`}</span>
