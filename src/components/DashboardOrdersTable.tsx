@@ -4,6 +4,8 @@ import { getOrderSummary } from '../services/api';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 
 interface OrderData {
   CREATION_DATE: string;
@@ -271,6 +273,128 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     toast.success('Data refreshed manually', {
       duration: 2000,
       icon: '🔄'
+    });
+  };
+
+  const exportToExcel = async () => {
+    if (processedData.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      
+      // Prepare data for export
+      const exportData = processedData.map(row => ({
+        'Creation Date': formatDate(row.CREATION_DATE),
+        'Order Type': row.ORDER_TYPE,
+        'Released Orders': row.Released_Ord,
+        'Allocated Orders': row.Allocated_Ord,
+        'Packed Orders': row.Packed_Ord,
+        'Shipped Orders': row.Shipped_Ord,
+        'Released Quantity': row.Released_Qty,
+        'Allocated Quantity': row.Allocated_Qty,
+        'Packed Quantity': row.Packed_Qty,
+        'Shipped Quantity': row.Shipped_Qty,
+        'Total Orders': row.Total_Order,
+        'Total Quantity': row.Total_Qty
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Auto-size columns
+      const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+        wch: Math.max(key.length, 15)
+      }));
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Order Summary');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `order_summary_${timestamp}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, filename);
+      
+      toast.success(`Exported ${exportData.length} records to Excel`, {
+        duration: 3000,
+        icon: '📊'
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const copyDashboardToImage = async () => {
+    try {
+      setIsCapturing(true);
+      
+      const dashboardElement = document.getElementById('dashboard-container');
+      if (!dashboardElement) {
+        toast.error('Dashboard element not found');
+        return;
+      }
+
+      // Capture the dashboard as canvas
+      const canvas = await html2canvas(dashboardElement, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true
+      });
+
+      // Try to copy to clipboard first
+      if (navigator.clipboard && canvas.toBlob) {
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            try {
+              await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+              ]);
+              toast.success('Dashboard copied to clipboard!', {
+                duration: 3000,
+                icon: '📋'
+              });
+            } catch (clipboardError) {
+              // Fallback to download
+              downloadImage(canvas);
+            }
+          }
+        }, 'image/png');
+      } else {
+        // Fallback to download
+        downloadImage(canvas);
+      }
+    } catch (error) {
+      console.error('Failed to capture dashboard:', error);
+      toast.error('Failed to capture dashboard');
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
+  const downloadImage = (canvas: HTMLCanvasElement) => {
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `dashboard_${new Date().toISOString().split('T')[0]}.png`;
+    link.href = canvas.toDataURL('image/png');
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Dashboard image downloaded!', {
+      duration: 3000,
+      icon: '📸'
     });
   };
 
