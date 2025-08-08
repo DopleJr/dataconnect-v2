@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronUp, ChevronDown, Filter, Calendar, Package, TrendingUp, TrendingDown, X, Check } from 'lucide-react';
+import { getOrderSummary } from '../services/api';
+import toast from 'react-hot-toast';
 
 interface OrderData {
   CREATION_DATE: string;
@@ -24,9 +26,11 @@ type SortField = keyof OrderData;
 type SortDirection = 'asc' | 'desc';
 
 const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({ 
-  data, 
   title = "Order Summary Dashboard" 
 }) => {
+  const [data, setData] = useState<OrderData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [sortField, setSortField] = useState<SortField>('CREATION_DATE');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedOrderTypes, setSelectedOrderTypes] = useState<string[]>([]);
