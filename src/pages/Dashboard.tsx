@@ -4,20 +4,6 @@ import { getDashboardStats } from '../services/api';
 import { DashboardStats } from '../types';
 import DashboardOrdersTable from '../components/DashboardOrdersTable';
 
-// Sample data - replace with actual API call
-const sampleOrderData = [
-  { CREATION_DATE: '2025-08-01', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 57, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 141, Total_Order: 57, Total_Qty: 141 },
-  { CREATION_DATE: '2025-08-01', ORDER_TYPE: 'B2C_SHP', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 1114, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 1791, Total_Order: 1114, Total_Qty: 1791 },
-  { CREATION_DATE: '2025-08-01', ORDER_TYPE: 'B2C_ZLR', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 322, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 654, Total_Order: 322, Total_Qty: 654 },
-  { CREATION_DATE: '2025-08-02', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 78, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 186, Total_Order: 78, Total_Qty: 186 },
-  { CREATION_DATE: '2025-08-02', ORDER_TYPE: 'B2C_SHP', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 1226, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 2118, Total_Order: 1226, Total_Qty: 2118 },
-  { CREATION_DATE: '2025-08-02', ORDER_TYPE: 'B2C_ZLR', Released_Ord: 0, Allocated_Ord: 0, Packed_Ord: 0, Shipped_Ord: 479, Released_Qty: 0, Allocated_Qty: 0, Packed_Qty: 0, Shipped_Qty: 1213, Total_Order: 479, Total_Qty: 1213 },
-  { CREATION_DATE: '2025-08-07', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 24, Packed_Ord: 0, Shipped_Ord: 47, Released_Qty: 0, Allocated_Qty: 95, Packed_Qty: 0, Shipped_Qty: 86, Total_Order: 71, Total_Qty: 181 },
-  { CREATION_DATE: '2025-08-07', ORDER_TYPE: 'B2C_ZLR', Released_Ord: 0, Allocated_Ord: 1, Packed_Ord: 7, Shipped_Ord: 292, Released_Qty: 0, Allocated_Qty: 5, Packed_Qty: 16, Shipped_Qty: 575, Total_Order: 300, Total_Qty: 596 },
-  { CREATION_DATE: '2025-08-08', ORDER_TYPE: 'B2C_COM', Released_Ord: 0, Allocated_Ord: 128, Packed_Ord: 0, Shipped_Ord: 34, Released_Qty: 0, Allocated_Qty: 409, Packed_Qty: 0, Shipped_Qty: 56, Total_Order: 162, Total_Qty: 465 },
-  { CREATION_DATE: '2025-08-08', ORDER_TYPE: 'B2C_SHP', Released_Ord: 0, Allocated_Ord: 1664, Packed_Ord: 25, Shipped_Ord: 0, Released_Qty: 0, Allocated_Qty: 2842, Packed_Qty: 38, Shipped_Qty: 0, Total_Order: 1689, Total_Qty: 2880 }
-];
-
 
 const StatCard = ({ title, value, icon: Icon, color, loading }: {
   title: string;
@@ -135,7 +121,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="mt-8">
-        <DashboardOrdersTable data={sampleOrderData} />
+        <DashboardOrdersTable />
       </div>
     </div>
   );

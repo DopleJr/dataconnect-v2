@@ -17,7 +17,6 @@ interface OrderData {
 }
 
 interface DashboardOrdersTableProps {
-  data: OrderData[];
   title?: string;
 }
 
@@ -62,23 +61,52 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     [...new Set(data.map(item => item.ORDER_TYPE))].sort(), [data]
   );
 
+  // Fetch data from API
+  const fetchOrderSummary = async () => {
+    try {
+      setLoading(true);
+      const response = await getOrderSummary({
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        orderTypes: selectedOrderTypes.length > 0 ? selectedOrderTypes : undefined,
+        page: 1,
+        limit: 1000
+      });
+      
+      setData(response.data);
+      setTotalRecords(response.total);
+      
+      if (response.data.length === 0) {
+        toast.info('No data found for the selected criteria');
+      }
+    } catch (error) {
+      console.error('Failed to fetch order summary:', error);
+      toast.error('Failed to load order summary data');
+      setData([]);
+      setTotalRecords(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    fetchOrderSummary();
+  }, []);
+
+  // Refetch when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchOrderSummary();
+    }, 500); // Debounce API calls
+
+    return () => clearTimeout(timeoutId);
+  }, [startDate, endDate, selectedOrderTypes]);
+
   // Filter and sort data
   const processedData = useMemo(() => {
-    let filtered = data;
-
-    // Filter by order types
-    if (selectedOrderTypes.length > 0) {
-      filtered = filtered.filter(item => selectedOrderTypes.includes(item.ORDER_TYPE));
-    }
-
-
-    // Filter by date range
-    if (startDate) {
-      filtered = filtered.filter(item => item.CREATION_DATE >= startDate);
-    }
-    if (endDate) {
-      filtered = filtered.filter(item => item.CREATION_DATE <= endDate);
-    }
+    // Data is already filtered by the API, just sort it
+    let filtered = [...data];
 
     return filtered.sort((a, b) => {
       let aValue = a[sortField];
@@ -94,7 +122,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortField, sortDirection, selectedOrderTypes, startDate, endDate]);
+  }, [data, sortField, sortDirection]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -197,13 +225,23 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
             <h2 className="text-xl font-bold text-white">{title}</h2>
           </div>
           <div className="text-white text-sm">
-            {summaryStats.recordCount} records
+            {loading ? 'Loading...' : `${summaryStats.recordCount} records`}
           </div>
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white rounded-lg p-4 border border-gray-200 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-16"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="flex items-center justify-between">
@@ -245,6 +283,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -261,6 +300,12 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
               >
                 Clear All Filters
               </button>
+            )}
+            {loading && (
+              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                <span>Loading data...</span>
+              </div>
             )}
           </div>
           
@@ -445,7 +490,28 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {processedData.map((row, index) => (
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 5 }).map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  {allColumns.filter(col => visibleColumns.has(col.key)).map(column => (
+                    <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : processedData.length === 0 ? (
+              <tr>
+                <td colSpan={allColumns.filter(col => visibleColumns.has(col.key)).length} className="px-6 py-8 text-center text-gray-500">
+                  <div className="space-y-2">
+                    <p className="text-lg">No data found</p>
+                    <p className="text-sm">Try adjusting your filter criteria</p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              processedData.map((row, index) => (
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 transition-colors duration-150"
@@ -472,7 +538,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
                   </td>
                 ))}
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -481,7 +548,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
         <div className="flex items-center justify-between text-sm text-gray-600">
           <span>
-            Showing {processedData.length} of {data.length} records
+            Showing {processedData.length} of {totalRecords} total records
           </span>
           <span>
             Last updated: {new Date().toLocaleTimeString()}

@@ -149,3 +149,28 @@ export const deleteProduct = async (id: number): Promise<void> => {
     throw error;
   }
 };
+
+// Get order summary data for dashboard
+export const getOrderSummary = async (params: {
+  startDate?: string;
+  endDate?: string;
+  orderTypes?: string[];
+  page?: number;
+  limit?: number;
+}): Promise<{ data: any[]; total: number; page: number; totalPages: number }> => {
+  try {
+    const queryParams = {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      orderTypes: params.orderTypes?.join(','),
+      page: params.page || 1,
+      limit: params.limit || 1000
+    };
+
+    const response = await api.get('/query/order-summary', { params: queryParams });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching order summary:', error);
+    throw error;
+  }
+};
