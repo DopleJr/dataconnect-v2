@@ -103,7 +103,7 @@ export const getAllProducts = async (params: {
       console.error('Error fetching products:', error);
     }
     throw error;
-  }
+  }
 };
 
 
@@ -171,6 +171,31 @@ export const getOrderSummary = async (params: {
     return response.data;
   } catch (error) {
     console.error('Error fetching order summary:', error);
+    throw error;
+  }
+};
+
+// Get outbound store data for dashboard
+export const getOutboundStore = async (params: {
+  startDate?: string;
+  endDate?: string;
+  orderTypes?: string[];
+  page?: number;
+  limit?: number;
+}): Promise<{ data: any[]; total: number; page: number; totalPages: number }> => {
+  try {
+    const queryParams = {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      orderTypes: params.orderTypes?.join(','),
+      page: params.page || 1,
+      limit: params.limit || 1000
+    };
+
+    const response = await api.get('/dashboard/outbound-store', { params: queryParams });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching outbound store data:', error);
     throw error;
   }
 };

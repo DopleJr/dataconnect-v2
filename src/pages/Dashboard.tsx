@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowDownCircle, ArrowUpCircle, Package } from 'lucide-react';
 import { getDashboardStats } from '../services/api';
 import { DashboardStats } from '../types';
-import DashboardOrdersTable from '../components/DashboardOrdersTable';
+import DashboardTabs from '../components/DashboardTabs';
 
 
 const StatCard = ({ title, value, icon: Icon, color, loading }: {
@@ -121,7 +121,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="mt-8">
-        <DashboardOrdersTable />
+        <DashboardTabs />
       </div>
     </div>
   );
