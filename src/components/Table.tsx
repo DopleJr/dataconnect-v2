@@ -18,7 +18,7 @@ interface SearchCondition {
 interface TableProps {
   columns: Column[];
   title: string;
-  type: 'stockinventory' | 'stockinbound'| 'stockoutbound' | 'outboundorders' | 'tracetransaction' | 'inboundallocation';
+  type: 'stockinventory' | 'stockinbound'| 'stockoutbound' | 'outboundorders' | 'tracetransaction' | 'inboundallocation' | 'outboundsto' | 'outboundb2c' | 'outboundmonitoring' | 'outboundappsformat'
 }
 
 interface ColumnFilter {

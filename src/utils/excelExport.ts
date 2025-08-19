@@ -8,8 +8,8 @@ export interface ExportProgress {
   totalSheets: number;
 }
 
-const ROWS_PER_SHEET = 100000; // Reduced from 500k to 100k for better memory management
-const CHUNK_SIZE = 5000; // Process data in smaller chunks
+const ROWS_PER_SHEET = 200000; // Reduced from 500k to 100k for better memory management
+const CHUNK_SIZE = 1000; // Process data in smaller chunks
 
 export const calculateTimeRemaining = (startTime: number, progress: number): string => {
   if (progress === 0 || progress >= 100) return 'Calculating...';

@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 interface OrderData {
   CREATION_DATE: string;
   ORDER_TYPE: string;
+  Cancelled_Ord: number;
   Released_Ord: number;
   Allocated_Ord: number;
   Packed_Ord: number;
@@ -49,8 +50,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
-    'CREATION_DATE', 'ORDER_TYPE', 'Released_Ord', 'Allocated_Ord', 'Packed_Ord', 
-    'Shipped_Ord', 'Released_Qty', 'Allocated_Qty', 'Packed_Qty', 'Shipped_Qty', 
+    'CREATION_DATE', 'ORDER_TYPE','Cancelled_Ord', 'Released_Ord', 'Packed_Ord', 
+    'Shipped_Ord', 'Released_Qty', 'Packed_Qty', 'Shipped_Qty', 
     'Total_Order', 'Total_Qty'
   ]));
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
@@ -61,6 +62,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
   const allColumns = [
     { key: 'CREATION_DATE', label: 'Creation Date', icon: Calendar },
     { key: 'ORDER_TYPE', label: 'Order Type', icon: Package },
+    { key: 'Cancelled_Ord', label: 'Cancelled Ord', icon: TrendingDown },
     { key: 'Released_Ord', label: 'Released Ord', icon: TrendingUp },
     { key: 'Allocated_Ord', label: 'Allocated Ord', icon: TrendingUp },
     { key: 'Packed_Ord', label: 'Packed Ord', icon: TrendingUp },
@@ -107,7 +109,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       setLastRefresh(new Date());
       
       if (response.data.length === 0) {
-        toast.info('No data found for the selected criteria');
+        toast.error('No data found for the selected criteria');
       }
     } catch (error) {
       console.error('Failed to fetch order summary:', error);
@@ -289,6 +291,7 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
       const exportData = processedData.map(row => ({
         'Creation Date': formatDate(row.CREATION_DATE),
         'Order Type': row.ORDER_TYPE,
+        'Cancelled Orders': row.Cancelled_Ord,
         'Released Orders': row.Released_Ord,
         'Allocated Orders': row.Allocated_Ord,
         'Packed Orders': row.Packed_Ord,
