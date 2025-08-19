@@ -1,16 +1,16 @@
-import express from 'express';
-import db from '../db.js';
+import express from "express";
+import db from "../db.js";
 
 const router = express.Router();
 
 // Get all products with filtering and pagination
-router.get('/', async (req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      searchConditions = '',
-      type = '',
+    const {
+      page = 1,
+      limit = 10,
+      searchConditions = "",
+      type = "",
       countOnly = false
     } = req.query;
 
@@ -19,25 +19,25 @@ router.get('/', async (req, res, next) => {
     try {
       conditions = searchConditions ? JSON.parse(searchConditions) : [];
     } catch (error) {
-      console.error('Error parsing search conditions:', error);
+      console.error("Error parsing search conditions:", error);
       conditions = [];
     }
 
-    let tableName = '';
-    let joinClause = '';
-    let selectClause = '';
-    let selectClauseTrace = '';
-    let selectClauseTrace2 = '';
-    let groupByClause = '';
-    let orderByClause = '';
-    let havingClause = '';
-    let groupByTrace = '';
-    let groupByTrace2 = '';
-    let orderByClauseTrace = '';
-    let closureAlias = '';
+    let tableName = "";
+    let joinClause = "";
+    let selectClause = "";
+    let selectClauseTrace = "";
+    let selectClauseTrace2 = "";
+    let groupByClause = "";
+    let orderByClause = "";
+    let havingClause = "";
+    let groupByTrace = "";
+    let groupByTrace2 = "";
+    let orderByClauseTrace = "";
+    let closureAlias = "";
 
-    if (type === 'stockinbound') {
-      tableName = 'default_receiving.rcv_receipt inb';
+    if (type === "stockinbound") {
+      tableName = "default_receiving.rcv_receipt inb";
       joinClause = `
       INNER JOIN 
         default_item_master.ite_item inb2 
@@ -59,16 +59,15 @@ router.get('/', async (req, res, next) => {
         inb.PARENT_LPN_ID,
         inb.PRODUCT_STATUS_ID,
         DATE_ADD( DATE_FORMAT(inb.UPDATED_TIMESTAMP, '%Y-%m-%d %H:%i:%s') , INTERVAL 7 HOUR) AS UPDATED_TIMESTAMP,
-        CAST(inb.QUANTITY AS UNSIGNED) AS QUANTITY
+        CAST(inb.QUANTITY AS SIGNED) AS QUANTITY
         `;
       havingClause = `inb2.PROFILE_ID='ID_CID001683'
 			  AND inb.BUSINESS_UNIT_ID ='CID001683'
         AND inb.ORG_ID ='ID_0344'
         AND inb3.LPN_STATUS='4000'`;
-      orderByClause = 'ORDER BY inb.UPDATED_TIMESTAMP DESC';
-      
-    } else if (type === 'stockoutbound') {
-      tableName = 'default_pickpack.ppk_olpn_detail out1';
+      orderByClause = "ORDER BY inb.UPDATED_TIMESTAMP DESC";
+    } else if (type === "stockoutbound") {
+      tableName = "default_pickpack.ppk_olpn_detail out1";
       joinClause = `
         
         INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
@@ -83,8 +82,8 @@ router.get('/', async (req, res, next) => {
         DATE_FORMAT(DATE_ADD(out2.UPDATED_TIMESTAMP, INTERVAL 7 HOUR), '%Y-%m-%d %H:%i:%s')  AS UPDATED_TIMESTAMP,
         out2.ORIGINAL_ORDER_ID,
         CASE
-            WHEN out2.ORDER_TYPE = 'TO_B2B' THEN '2792'
-            WHEN out2.ORDER_TYPE = 'TO_B2C' THEN '2992'
+            WHEN out2.ORDER_TYPE IN ('TO_B2B','B2C_SHP','B2C_ZLR','B2C_COM') THEN '2792'
+            WHEN out2.ORDER_TYPE IN ('TO_B2C','B2B_A','B2B_M','B2B_MGR','B2B_C') THEN '2992'
             ELSE out4.EXT_DHL_CUST_REF4
         END AS PRODUCT_STATUS_ID,
         out2.MINIMUM_STATUS AS STATUS_DO,
@@ -92,7 +91,7 @@ router.get('/', async (req, res, next) => {
         out4.EXT_DHL_CUST_REF2 AS STO_LINE,
         out1.ITEM_ID,
         out1.OLPN_ID,
-        CAST(out1.PACKED_QUANTITY AS UNSIGNED) AS PACKED_QUANTITY,
+        CAST(out1.PACKED_QUANTITY AS SIGNED) AS PACKED_QUANTITY,
         out2.ORDER_TYPE,
         out3.STATUS AS STATUS_OLPN,
         out2.EXT_DHL_CUSTOMER_SHIP_TO AS SHIP_TO,
@@ -104,14 +103,12 @@ router.get('/', async (req, res, next) => {
         END AS SO `;
       havingClause = `
       out1.BUSINESS_UNIT_ID = 'CID001683'
-      AND out3.STATUS = '8000'
+      AND out2.MINIMUM_STATUS = '8000'
       AND out2.ORDER_TYPE <> 'NSP'
       `;
-      orderByClause = 'ORDER BY out2.UPDATED_TIMESTAMP DESC';
-
-    }
-    else if (type === 'stockinventory') {
-      tableName = 'default_dcinventory.dci_inventory a';
+      orderByClause = "ORDER BY out2.UPDATED_TIMESTAMP DESC";
+    } else if (type === "stockinventory") {
+      tableName = "default_dcinventory.dci_inventory a";
       joinClause = `INNER JOIN 
           default_item_master.ite_item b 
       ON 
@@ -136,11 +133,11 @@ router.get('/', async (req, res, next) => {
         IF(a.CONSUMPTION_PRIORITY_DATE IS NULL, 
        DATE_FORMAT('2999-01-01', '%Y-%m-%d %H:%i:%s'), 
        DATE_FORMAT(a.CONSUMPTION_PRIORITY_DATE, '%Y-%m-%d %H:%i:%s')) AS CONSUMPTION_PRIORITY_DATE , 
-       CAST(a.ON_HAND AS UNSIGNED) AS ON_HAND,
-       CAST(a.ALLOCATED AS UNSIGNED) AS ALLOCATED,
-       CAST((a.ON_HAND - a.ALLOCATED) AS UNSIGNED) AS AVAILABLE, 
+       CAST(a.ON_HAND AS SIGNED) AS ON_HAND,
+       CAST(a.ALLOCATED AS SIGNED) AS ALLOCATED,
+       CAST((a.ON_HAND - a.ALLOCATED) AS SIGNED) AS AVAILABLE, 
         c.CONDITION_CODE ,
-        CAST(a.TO_BE_FILLED AS UNSIGNED) AS TO_BE_FILLED,
+        CAST(a.TO_BE_FILLED AS SIGNED) AS TO_BE_FILLED,
         
         DATE_FORMAT(DATE_ADD(a.CREATED_TIMESTAMP, INTERVAL 7 HOUR), '%Y-%m-%d %H:%i:%s') AS CREATED_TIMESTAMP ,
         DATE_FORMAT(DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), '%Y-%m-%d') AS CURRENTDATE`;
@@ -149,473 +146,674 @@ router.get('/', async (req, res, next) => {
 			  AND a.BUSINESS_UNIT_ID ='CID001683'
         AND a.ORG_ID ='ID_0344'
         AND a.IS_IN_TRANSIT ='0'
-       `;  
-      orderByClause = 'ORDER BY  a.CREATED_TIMESTAMP DESC';
-    }
-    else if (type === 'tracetransaction') {
+       `;
+      orderByClause = "ORDER BY  a.CREATED_TIMESTAMP DESC";
+    } else if (type === "tracetransaction") {
       tableName = ``;
       joinClause = ``;
       selectClauseTrace = `
-            -- Main query for individual transaction records
-      (SELECT
-          transaction_type AS Transaction,
-          product_status as Product_status, 
+      -- Main query for individual transaction records
+      (
+        SELECT
+          bussines_unit AS bussines_unit,
+          transaction_type AS transaction_type,
+          transaction_desc AS transaction_desc,
+          product_status AS Product_status,
           item_id AS Item_ID,
           wms_reference AS WMS_Reference,
           sap_reference AS SAP_Reference,
-          CAST(SUM(inbound_qty) AS UNSIGNED) AS QTY_INB,
-          CAST(SUM(outbound_qty) AS UNSIGNED) AS QTY_OUT,
-          SUM(adjustment_qty) AS QTY_ADJ,  -- Sum without casting to unsigned
-          DATE_FORMAT(DATE_ADD(transaction_date, INTERVAL 7 HOUR), '%Y-%m-%d %H:%i:%s') AS LastTransactionDate
-      FROM (
+          CAST( SUM( inbound_qty ) AS SIGNED ) AS QTY_INB,
+          CAST( SUM( outbound_qty ) AS SIGNED ) AS QTY_OUT,
+          CAST( SUM( adjustment_qty ) AS SIGNED ) AS QTY_ADJ,-- Sum without casting to unsigned
+          DATE_FORMAT( DATE_ADD( transaction_date, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS transaction_date 
+        FROM
+          (
           SELECT
-              'Inbound' AS transaction_type,
-              inb.product_status_id AS product_status,
-              inb.ASN_ID AS wms_reference,
-              inb.ASN_ID AS sap_reference,
-              inb.ITEM_ID AS item_id,
-              CAST(inb.QUANTITY AS UNSIGNED) AS quantity,
-              inb.UPDATED_TIMESTAMP AS transaction_date,
-              CAST(inb.QUANTITY AS UNSIGNED) AS inbound_qty,
-              0 AS outbound_qty,
-              0 AS adjustment_qty
-          FROM default_receiving.rcv_receipt inb
-          INNER JOIN default_item_master.ite_item inb2 ON inb.ITEM_ID = inb2.ITEM_ID
-          LEFT JOIN default_receiving.rcv_lpn inb3 ON inb.LPN_ID = inb3.LPN_ID
-          WHERE inb.BUSINESS_UNIT_ID = 'CID001683' 
-            AND inb3.LPN_STATUS = '4000'
-            AND inb.ASN_ID IS NOT NULL
-          
-          UNION ALL
-          
+            inb.BUSINESS_UNIT_ID AS bussines_unit,
+            'Inbound' AS transaction_type,
+            inb3.PROCESS AS transaction_desc,
+            inb.product_status_id AS product_status,
+            inb.ASN_ID AS wms_reference,
+            inb.ASN_ID AS sap_reference,
+            inb.ITEM_ID AS item_id,
+            CAST( inb.QUANTITY AS SIGNED ) AS quantity,
+            inb.UPDATED_TIMESTAMP AS transaction_date,
+            CAST( inb.QUANTITY AS SIGNED ) AS inbound_qty,
+            0 AS outbound_qty,
+            0 AS adjustment_qty 
+          FROM
+            default_receiving.rcv_receipt inb
+            INNER JOIN default_item_master.ite_item inb2 ON inb.ITEM_ID = inb2.ITEM_ID
+            LEFT JOIN default_receiving.rcv_lpn inb3 ON inb.LPN_ID = inb3.LPN_ID 
+          WHERE
+            inb3.LPN_STATUS = '4000' 
+            AND inb.ASN_ID IS NOT NULL UNION ALL
           SELECT
-              'Outbound' AS transaction_type,
-              out1.product_status_id,
-              out1.ORIGINAL_ORDER_ID,
-              CASE
-                  WHEN LOCATE( 'DhlCustRef1', out2.JSON_STORE ) > 0 THEN
-                  SUBSTRING( out2.JSON_STORE, LOCATE( 'DhlCustRef1', out2.JSON_STORE ) + 15, 10 ) ELSE NULL 
-              END AS sap_reference,
-              out1.ITEM_ID,
-              out1.PACKED_QUANTITY,
-              out1.UPDATED_TIMESTAMP,
-              0,
-              CAST(out1.PACKED_QUANTITY AS UNSIGNED) AS outbound_qty,
-              0
-          FROM default_pickpack.ppk_olpn_detail out1
-          INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
-          WHERE out1.ORIGINAL_ORDER_ID IS NOT NULL
-          
-          UNION ALL
-          
+            out1.BUSINESS_UNIT_ID AS bussines_unit,
+            'Outbound' AS transaction_type,
+            out1.PROCESS AS transaction_desc,
+            out1.product_status_id,
+            out1.ORIGINAL_ORDER_ID,
+            CASE
+              WHEN LOCATE( 'DhlCustRef1', out2.JSON_STORE ) > 0 THEN
+              SUBSTRING( out2.JSON_STORE, LOCATE( 'DhlCustRef1', out2.JSON_STORE ) + 15, 10 ) ELSE NULL 
+            END AS sap_reference,
+            out1.ITEM_ID,
+            CAST( out1.PACKED_QUANTITY AS SIGNED ) AS PACKED_QUANTITY,
+            out1.UPDATED_TIMESTAMP,
+            0,
+            CAST( out1.PACKED_QUANTITY AS SIGNED ) AS outbound_qty,
+            0 
+          FROM
+            default_pickpack.ppk_olpn_detail out1
+            INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID 
+          WHERE
+            out1.ORIGINAL_ORDER_ID IS NOT NULL 
+            AND out2.MINIMUM_STATUS = '8000' UNION ALL
           SELECT
-              'Adjustment' AS transaction_type,
-              IFNULL((CONCAT(inv1.transaction_id,' : ','FROM : ', inv1.target_location_id,' TO : ',inv1.container_id)),CONCAT(inv1.transaction_id,' : ',inv1.container_id)) as product_status,
-              inv1.REASON_CODE_ID,
-              inv1.REASON_CODE_ID,
-              inv1.ITEM_ID,
-              inv1.ADJUSTED_QUANTITY,
-              inv1.UPDATED_TIMESTAMP,
-              0,
-              0,
-              IFNULL(CAST( inv1.ADJUSTED_QUANTITY AS SIGNED ), 0 ) 
-              -- inv1.ADJUSTED_QUANTITY
-              -- Keep the original value for adjustment
-          FROM default_task.tsk_activity_tracking inv1
-          WHERE inv1.REASON_CODE_ID IS NOT NULL
-      ) AS transaction_data
-       
+            inv1.BUSINESS_UNIT_ID AS bussines_unit,
+            'Adjustment' AS transaction_type,
+            inv1.TRANSACTION_TYPE_ID AS transaction_desc,
+            IFNULL(inv2.PRODUCT_STATUS_ID,inv3.PRODUCT_STATUS_ID) as product_status,
+            #IFNULL((
+            #		CONCAT( inv1.transaction_id, ' : ', 'FROM : ', inv1.target_location_id, ' TO : ', inv1.container_id )),
+            #CONCAT( inv1.transaction_id, ' : ', inv1.container_id )) AS product_status,
+            inv1.REASON_CODE_ID,
+            inv1.REASON_CODE_ID,
+            inv1.ITEM_ID,
+            CAST( inv1.ADJUSTED_QUANTITY AS SIGNED ) AS ADJUSTED_QUANTITY,
+            inv1.UPDATED_TIMESTAMP,
+            0,
+            0,
+            IFNULL( CAST( inv1.ADJUSTED_QUANTITY AS SIGNED ), 0 ) -- inv1.ADJUSTED_QUANTITY
+      -- Keep the original value for adjustment
+            
+          FROM
+            default_task.tsk_activity_tracking inv1
+            LEFT JOIN default_dcinventory.dci_inventory inv2 ON 
+              inv2.ITEM_ID = inv1.ITEM_ID	AND 
+              inv2.INVENTORY_CONTAINER_ID = inv1.CONTAINER_ID
+            LEFT JOIN default_receiving.rcv_receipt inv3 ON 
+              inv3.ITEM_ID = inv1.ITEM_ID AND 
+              inv3.LPN_ID = inv1.CONTAINER_ID 
+          WHERE
+            inv1.REASON_CODE_ID IS NOT NULL 
+          ) AS transaction_data 
       `;
       selectClauseTrace2 = `
-      UNION ALL
-      
-        -- Total aggregation row
+      UNION ALL-- Total aggregation row
+      SELECT
+        bussines_unit,
+        'TOTAL' AS transaction_type,
+        '-' AS transaction_desc,
+        '-' AS Product_status,
+        item_id AS Item_ID,
+        '-' AS WMS_Reference,
+        '-' AS SAP_Reference,
+        CAST( SUM( inbound_qty ) AS SIGNED ) AS QTY_INB,
+        CAST( SUM( outbound_qty ) AS SIGNED ) AS QTY_OUT,
+        CAST( SUM( adjustment_qty ) AS SIGNED ) AS QTY_ADJ,-- SUM(adjustment_qty) AS QUANTITY ADJUSTMENT,  -- Sum without casting to unsigned
+        MAX(DATE_FORMAT( DATE_ADD( transaction_date, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) ) AS transaction_date 
+      FROM
+        (
         SELECT
-            'TOTAL' AS Transaction,
-            '-' as Product_status,
-            item_id AS Item_ID,
-            '-' AS WMS_Reference,
-            '-' AS SAP_Reference,
-            CAST(SUM(inbound_qty) AS SIGNED) AS QTY_INB,
-            CAST(SUM(outbound_qty) AS SIGNED) AS QTY_OUT,
-            CAST(SUM(adjustment_qty) AS SIGNED) AS QTY_ADJ,
-            -- SUM(adjustment_qty) AS QUANTITY ADJUSTMENT,  -- Sum without casting to unsigned
-            NULL AS LastTransactionDate
-        FROM (
-            SELECT
-                inb.ITEM_ID AS item_id,
-                inb.product_status_id as Product_status,
-                CAST(inb.QUANTITY AS UNSIGNED) AS inbound_qty,
-                0 AS outbound_qty,
-                0 AS adjustment_qty
-            FROM default_receiving.rcv_receipt inb
-            INNER JOIN default_item_master.ite_item inb2 ON inb.ITEM_ID = inb2.ITEM_ID
-            LEFT JOIN default_receiving.rcv_lpn inb3 ON inb.LPN_ID = inb3.LPN_ID
-            WHERE inb.BUSINESS_UNIT_ID = 'CID001683' 
-              AND inb3.LPN_STATUS = '4000'
-              AND inb.ASN_ID IS NOT NULL
-              
-            UNION ALL
-            
-            SELECT
-                out1.ITEM_ID,
-                out1.product_status_id as Product_status,
-                0,
-                CAST(out1.PACKED_QUANTITY AS UNSIGNED) AS outbound_qty,
-                0
-            FROM default_pickpack.ppk_olpn_detail out1
-            INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
-            WHERE out1.ORIGINAL_ORDER_ID IS NOT NULL
-              
-            UNION ALL
-            
-            SELECT
-                inv1.ITEM_ID,
-                IFNULL((CONCAT(inv1.transaction_id,' : ','FROM : ', inv1.target_location_id,' TO : ',inv1.container_id)),CONCAT(inv1.transaction_id,' : ',inv1.container_id)) as product_status,
-                0,
-                0,
-                IFNULL(CAST( inv1.ADJUSTED_QUANTITY AS SIGNED ), 0 )  -- Keep the original value for adjustment
-            FROM default_task.tsk_activity_tracking inv1
-            WHERE inv1.REASON_CODE_ID IS NOT NULL
-        ) AS total_data`;
-    groupByTrace = `
-      GROUP BY 
+          inb.BUSINESS_UNIT_ID AS bussines_unit,
+          inb.ITEM_ID AS item_id,
+          inb.product_status_id AS Product_status,
+          CAST( inb.QUANTITY AS SIGNED ) AS inbound_qty,
+          0 AS outbound_qty,
+          0 AS adjustment_qty,
+          inb.UPDATED_TIMESTAMP AS transaction_date 
+        FROM
+          default_receiving.rcv_receipt inb
+          INNER JOIN default_item_master.ite_item inb2 ON inb.ITEM_ID = inb2.ITEM_ID
+          LEFT JOIN default_receiving.rcv_lpn inb3 ON inb.LPN_ID = inb3.LPN_ID 
+        WHERE
+          inb3.LPN_STATUS = '4000' 
+          AND inb.ASN_ID IS NOT NULL UNION ALL
+        SELECT
+          out1.BUSINESS_UNIT_ID AS bussines_unit,
+          out1.ITEM_ID,
+          out1.product_status_id AS Product_status,
+          0,
+          CAST( out1.PACKED_QUANTITY AS SIGNED ) AS outbound_qty,
+          0,
+          out1.UPDATED_TIMESTAMP AS transaction_date 
+        FROM
+          default_pickpack.ppk_olpn_detail out1
+          INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID 
+        WHERE
+          out1.ORIGINAL_ORDER_ID IS NOT NULL 
+          AND out2.MINIMUM_STATUS = '8000' UNION ALL
+        SELECT
+          inv1.BUSINESS_UNIT_ID AS bussines_unit,
+          inv1.ITEM_ID,
+          IFNULL( inv2.PRODUCT_STATUS_ID, inv3.PRODUCT_STATUS_ID ) AS product_status,#IFNULL((
+    #CONCAT( inv1.transaction_type_id, ' : ', 'FROM : ', inv1.target_location_id, ' TO : ', inv1.container_id )),
+    #CONCAT( inv1.transaction_type_id, ' : ', inv1.container_id ))  AS transaction_detail,
+          0,
+          0,
+          IFNULL( CAST( inv1.ADJUSTED_QUANTITY AS SIGNED ), 0 ),-- Keep the original value for adjustment
+          inv1.UPDATED_TIMESTAMP AS transaction_date 
+        FROM
+          default_task.tsk_activity_tracking inv1
+          LEFT JOIN default_dcinventory.dci_inventory inv2 ON inv2.ITEM_ID = inv1.ITEM_ID 
+          AND inv2.INVENTORY_CONTAINER_ID = inv1.CONTAINER_ID
+          LEFT JOIN default_receiving.rcv_receipt inv3 ON inv3.ITEM_ID = inv1.ITEM_ID 
+          AND inv3.LPN_ID = inv1.CONTAINER_ID 
+        WHERE
+          inv1.REASON_CODE_ID IS NOT NULL 
+        ) AS total_data `;
+      groupByTrace = `
+      GROUP BY
+      bussines_unit,
       transaction_type,
-      product_status,
+      transaction_desc,
       item_id,
+      product_status,
       wms_reference,
       sap_reference,
-      transaction_date `; 
-    groupByTrace2 = `
-      GROUP BY item_id`;   
-    orderByClauseTrace = `
-      ORDER BY LastTransactionDate DESC )   `;
-    closureAlias = `AS total_data`
-    } else if ( type === 'inboundallocation') {
-      tableName = '';
+      transaction_date `;
+      groupByTrace2 = `
+      GROUP BY
+        item_id,
+        bussines_unit`;
+      orderByClauseTrace = `
+      ORDER BY transaction_date ASC )   `;
+      closureAlias = `AS total_data`;
+    } else if (type === "inboundallocation") {
+      tableName = "";
       selectClauseTrace = `
       (SELECT
-      out1.ORDER_ID AS Transfer_Order_Number, 
-        out6.ORDER_LINE_PRIORITY AS Transfer_Order_Priority, 
-        CAST(out4.ORIGINAL_ORDER_LINE_ID AS UNSIGNED )AS Transfer_Order_Item, 
-        CAST(002 AS SIGNED ) AS Source_Storage_Type, 
+        out2.ORIGINAL_ORDER_ID AS Transfer_Order_Number,
+        out1.PRIORITY AS Transfer_Order_Priority,
+        CAST( out1.EXT_DHL_CUST_REF1 AS UNSIGNED ) AS Transfer_Order_Item,
+        CAST( 002 AS SIGNED ) AS Source_Storage_Type,
         out1.ITEM_ID AS Article,
-        out1.INVENTORY_CONTAINER_ID AS SSCC_Number,
-        out3.PICK_LOCATION_ID AS Source_Storage_Bin,
-        '' AS Carton_Number,
-        DATE_FORMAT(out6.CREATED_TIMESTAMP, '%Y-%m-%d') AS Creation_Date,
-        IFNULL(out8.EXT_DHL_CUST_REF3,9999999999) AS GR_Number,
-        IFNULL(DATE_FORMAT(out8.UPDATED_TIMESTAMP, '%Y-%m-%d'),DATE_FORMAT(out6.CREATED_TIMESTAMP, '%Y-%m-%d')) AS GR_Date,
-        out6.ORIGINAL_ORDER_LINE_ID ,
-        CAST(SUM(out1.ORIGINAL_QUANTITY) AS SIGNED) AS Dest_target_quantity, 
+        out3.INVENTORY_CONTAINER_ID AS SSCC_Number,
+        out3.LOCATION_ID AS Source_Storage_Bin,
+        0 AS Carton_Number,
+        DATE_FORMAT(out3.CREATED_TIMESTAMP, '%Y-%m-%d') AS Creation_Date,
+        IFNULL( out6.EXT_DHL_CUST_REF3, 9999999999 ) AS GR_Number,
+        IFNULL(DATE_FORMAT(out6.UPDATED_TIMESTAMP, '%Y-%m-%d'),DATE_FORMAT(out3.CREATED_TIMESTAMP, '%Y-%m-%d')) AS GR_Date,
+        IFNULL(CAST((out5.INITIAL_QUANTITY) AS UNSIGNED), CAST((out12.INITIAL_QUANTITY) AS UNSIGNED) ) AS Dest_target_quantity,
         CAST(0 AS SIGNED) AS Actual_Qty, 
         '' AS User,
         '' AS Confirmation_Date,
         '' AS Confirmation_Time,
-        out1.ORDER_ID AS Delivery,
-        CAST(002 AS SIGNED ) AS Storage_Type,
-        out6.ITEM_ATTRIBUTE1 AS PO_Number,
-        SUBSTRING(out3.CUSTOMER_ID, 7) AS Store_ID,
-        out3.DESTINATION_ADDRESS_FIRSTNAME AS Store_Name,	
-        out4.EXT_DHL_CUST_REF5 AS Konsep,
-        SUBSTRING_INDEX(out5.COLOR_SUFFIX , '-', -1) AS Code_Colour,
-        SUBSTRING_INDEX(out5.COLOR , ',', 1) AS Colour_Description, 
-        SUBSTRING(CONCAT(SUBSTRING_INDEX(out5.SIZE_CODE, '-', -1),out5.EXT_DHL_CUST_REF1,out5.EXT_DHL_CUST_REF5),2) AS Code_Size, 
+        out2.ALTERNATE_ORIGINAL_ORDER_ID AS Delivery,
+        CAST( 002 AS SIGNED ) AS Storage_Type,
+        IFNULL(out3.INVENTORY_ATTRIBUTE1,'9999999999') AS PO_Number,
+        SUBSTRING( out2.EXT_DHL_CUSTOMER_SHIP_TO, 7 ) AS Store_ID,
+        out2.DESTINATION_ADDRESS_FIRSTNAME AS Store_Name,
+        out1.EXT_DHL_CUST_REF5 AS Konsep,
+        SUBSTRING_INDEX(out11.COLOR_SUFFIX , '-', -1) AS Code_Colour,
+        SUBSTRING_INDEX(out11.COLOR , ',', 1) AS Colour_Description, 
+        SUBSTRING(CONCAT(SUBSTRING_INDEX(out11.SIZE_CODE, '-', -1),out11.EXT_DHL_CUST_REF1,out11.EXT_DHL_CUST_REF5),2) AS Code_Size, 
         CASE
-            WHEN out5.SIZE_DESCRIPTION LIKE '%(EUR %' THEN 
+            WHEN out11.SIZE_DESCRIPTION LIKE '%(EUR %' THEN 
                 SUBSTRING(
-                out5.SIZE_DESCRIPTION, 
-                LOCATE('(', out5.SIZE_DESCRIPTION) + 1, 
-                LOCATE(')', out5.SIZE_DESCRIPTION) - LOCATE('(', out5.SIZE_DESCRIPTION) - 1
+                out11.SIZE_DESCRIPTION, 
+                LOCATE('(', out11.SIZE_DESCRIPTION) + 1, 
+                LOCATE(')', out11.SIZE_DESCRIPTION) - LOCATE('(', out11.SIZE_DESCRIPTION) - 1
             ) 
-            WHEN out5.SIZE_CODE LIKE 'HM_%' THEN 
-                SUBSTRING(SUBSTRING_INDEX(out5.SIZE_CODE, '-', 2), 4)
+            WHEN out11.SIZE_CODE LIKE 'HM_%' THEN 
+                SUBSTRING(SUBSTRING_INDEX(out11.SIZE_CODE, '-', 2), 4)
             ELSE 
-                SUBSTRING_INDEX(out5.SIZE_CODE, '-', 2)
+                SUBSTRING_INDEX(out11.SIZE_CODE, '-', 2)
         END AS  Size_Description,
-        out1.GENERATION_NUMBER AS Wave_Number,
-        out1.OLPN_ID AS OLPN_ID,
-        out7.DESCRIPTION AS Wave_Status,
-        out9.ASN_ID AS ASN_ID,
-        out9.EXT_DHL_CUST_REF7 AS EXT_DHL_CUST_REF7,
+        out1.ORDER_PLANNING_RUN_ID AS Wave_Number,
+        IFNULL(out9.TASK_ID,'AutoPacked') AS TASK_ID,
+        out3.OLPN_ID AS OLPN_1ST,
+        IFNULL(IFNULL(out5.OLPN_ID,out4.OLPN_ID),out3.OLPN_ID ) AS OLPN_2ND,
+        IFNULL(out4.PLANNED_SLOT_ID,'-') AS SLOT_ID,
+        IFNULL(out7.ASN_ID,'-') AS ASN_ID,
+        IFNULL(out7.EXT_DHL_CUST_REF7,'-') AS ORD_NBR,
         out1.PRODUCT_STATUS_ID AS PRODUCT_STATUS_ID,
-        out3.ORDER_TYPE AS ORDER_TYPE,
-        out12.DESCRIPTION AS LPN_STATUS,
-        IFNULL(out11.LOCATION_ID,'NOT PUTAWAY') AS LAST_LOCATION
+        out2.ORDER_TYPE AS ORDER_TYPE,
+        IFNULL(out8.DESCRIPTION,'AutoPacked') AS LPN_STATUS,
+        IFNULL(out10.LOCATION_ID,'-') AS LAST_LOCATION 
       
       FROM
-        default_dcinventory.dci_allocation AS out1
-        INNER JOIN
-        default_pickpack.ppk_olpn out3
-        ON 
-          out1.OLPN_ID = out3.OLPN_ID AND
-          out1.ORG_ID= out3.ORG_ID
-        
-        INNER JOIN
-        default_dcorder.dco_order_line out4
-        ON 
-          out1.ORDER_LINE_ID = out4.ORDER_LINE_ID AND
-          out1.ITEM_ID = out4.ITEM_ID AND
-          out1.ORG_ID= out4.ORG_ID
-        
-        INNER JOIN
-        default_item_master.ite_item out5
-        ON 
-          out1.ITEM_ID = out5.ITEM_ID
-          
-        INNER JOIN
-        default_pickpack.ppk_olpn_detail out6
-        ON
-          out1.ORG_ID= out6.ORG_ID AND
-          out1.OLPN_ID = out6.OLPN_ID AND
-          out1.ITEM_ID = out6.ITEM_ID AND
-          out1.OLPN_DETAIL_ID = out6.OLPN_DETAIL_ID
-          
-        INNER JOIN
-        default_dcinventory.dci_allocation_status out7
-        ON 
-          out1.STATUS = out7.STATUS 
-        
-        LEFT JOIN
-        default_receiving.rcv_asn_line out8
-        ON 
-          out1.ITEM_ID = out8.ITEM_ID AND
-          out1.INVENTORY_ATTRIBUTE1 = out8.INVENTORY_ATTRIBUTE1
-          AND out1.PRODUCT_STATUS_ID = out8.PRODUCT_STATUS_ID
-        
-        LEFT JOIN
-        default_receiving.rcv_asn out9
-        ON 
-          out1.INVENTORY_ATTRIBUTE1 = out9.EXT_DHL_EXT_PO_NBR
-          AND out8.ASN_ID = out9.ASN_ID
-        
-        LEFT JOIN
-        default_receiving.rcv_asn_status out10
-        ON 
-          out9.ASN_STATUS = out10.ASN_STATUS_ID		
-        
-        LEFT JOIN
-        default_dcinventory.dci_inventory out11
-        ON	
-          out1.INVENTORY_CONTAINER_ID = out11.ILPN_ID AND
-          out1.ITEM_ID = out11.ITEM_ID
-        
-        INNER JOIN
-        default_pickpack.ppk_olpn_status out12
-        ON
-          out6.STATUS = out12.OLPN_STATUS_ID 
-        `;
+    default_dcorder.dco_order_line out1
+    
+    INNER JOIN default_dcorder.dco_original_order out2 
+      ON out2.ORIGINAL_ORDER_ID = out1.ORIGINAL_ORDER_ID 
       
+    INNER JOIN default_dcinventory.dci_allocation out3 
+      ON out3.ORDER_LINE_ID = out1.ORDER_LINE_ID 
+      AND out3.ORIGINAL_ORDER_ID = out1.ORIGINAL_ORDER_ID 
+      AND out3.ITEM_ID = out1.ITEM_ID
       
-      groupByTrace = `
-      GROUP BY
-      out1.ORDER_ID, 
-      out1.ITEM_ID,
-      out1.OLPN_ID,
-      out3.PICK_LOCATION_ID,
-      out1.GENERATION_NUMBER,
-      out4.ORIGINAL_ORDER_LINE_ID,
-      out4.EXT_DHL_CUST_REF5,
-      out5.DESCRIPTION,
-      out5.SIZE_DESCRIPTION,
-      out5.COLOR_SUFFIX,
-      out5.COLOR,
-      out6.ORDER_LINE_PRIORITY,
-      out6.ITEM_ATTRIBUTE1,
-      out6.ORIGINAL_ORDER_LINE_ID,
-      out3.CUSTOMER_ID,
-      out3.DESTINATION_ADDRESS_FIRSTNAME,
-      out6.CREATED_TIMESTAMP,
-      out7.DESCRIPTION,
-      out1.INVENTORY_CONTAINER_ID,
-      out8.EXT_DHL_CUST_REF3,
-      out8.UPDATED_TIMESTAMP,
-      out9.ASN_ID,
-      out3.ORDER_TYPE,
-      out12.DESCRIPTION,
-      out11.LOCATION_ID,
-      out1.PRODUCT_STATUS_ID,
-      out1.OLPN_ID,
-      out5.SIZE_CODE,
-      out5.EXT_DHL_CUST_REF1,
-      out5.EXT_DHL_CUST_REF5,
-      out9.EXT_DHL_CUST_REF7
+    LEFT JOIN
+      default_task.tsk_task_detail out4
+      ON
+        out3.ALLOCATION_ID = out4.ALLOCATION_KEY_ID
+        AND out3.ITEM_ID = out4.ITEM_ID
+        AND out3.ORIGINAL_ORDER_ID = out4.ORIGINAL_ORDER_ID
+        AND out3.ORIGINAL_ORDER_LINE_ID = out4.ORIGINAL_ORDER_LINE_ID
+        AND out3.INVENTORY_CONTAINER_ID = out4.SOURCE_LOCATION_ID
+        AND out4.PLANNED_CONTAINER_ID IS NOT NULL
+      
+    LEFT JOIN
+      default_pickpack.ppk_olpn_detail out5
+      ON
+        out4.ORG_ID= out5.ORG_ID AND
+        out4.ORIGINAL_ORDER_ID = out5.ORIGINAL_ORDER_ID AND
+        out4.ITEM_ID = out5.ITEM_ID AND
+        out4.OLPN_DETAIL_ID = out5.OLPN_DETAIL_ID AND
+        out4.ORIGINAL_ORDER_LINE_ID = out5.ORIGINAL_ORDER_LINE_ID 
+      
+      LEFT JOIN
+      default_receiving.rcv_asn_line out6
+      ON
+        out3.ITEM_ID = out6.ITEM_ID AND	
+        out3.INVENTORY_ATTRIBUTE1 = out6.INVENTORY_ATTRIBUTE1 AND
+        out3.PRODUCT_STATUS_ID = out6.PRODUCT_STATUS_ID
+    
+      LEFT JOIN
+      default_receiving.rcv_asn out7
+      ON
+        out6.ASN_ID = out7.EXT_DHL_EXT_ASN_NBR AND
+        out3.INVENTORY_ATTRIBUTE1 = out7.EXT_DHL_EXT_PO_NBR
+      
+      LEFT JOIN
+          default_pickpack.ppk_olpn_detail_status out8
+          ON
+            out5.STATUS = out8.OLPN_DETAIL_STATUS_ID
+          
+      LEFT JOIN
+      default_task.tsk_task_detail out9
+      ON
+        out3.ALLOCATION_ID = out9.ALLOCATION_KEY_ID
+        AND out3.ORIGINAL_ORDER_ID = out9.ORIGINAL_ORDER_ID
+        AND out3.ITEM_ID = out9.ITEM_ID
+        AND out3.OLPN_DETAIL_ID = out9.OLPN_DETAIL_ID
+        AND out3.ORIGINAL_ORDER_LINE_ID = out9.ORIGINAL_ORDER_LINE_ID 
+        AND out9.SOURCE_CONTAINER_TYPE_ID = 'LOCATION'
+        AND out9.PLANNED_CONTAINER_ID IS  NULL
+        
+      LEFT JOIN
+          default_dcinventory.dci_inventory out10
+          ON	
+            out3.INVENTORY_CONTAINER_ID = out10.ILPN_ID AND
+            out3.ITEM_ID = out10.ITEM_ID
+            
+      INNER JOIN
+          default_item_master.ite_item out11
+          ON 
+            out1.ITEM_ID = out11.ITEM_ID
+            
+      LEFT JOIN
+      default_pickpack.ppk_olpn_detail out12
+      ON
+      out3.ORG_ID= out12.ORG_ID AND
+      out3.ORIGINAL_ORDER_ID = out12.ORIGINAL_ORDER_ID AND
+      out3.ITEM_ID = out12.ITEM_ID AND
+      out3.OLPN_DETAIL_ID = out12.OLPN_DETAIL_ID AND
+      out3.ORIGINAL_ORDER_LINE_ID = out12.ORIGINAL_ORDER_LINE_ID
       `;
+      groupByTrace = ``;
       orderByClauseTrace = `
       ORDER BY
-      out1.ORDER_ID,
-	    out6.ORIGINAL_ORDER_LINE_ID)`;
-      closureAlias = `AS total_data`;
-    }
-
-    else if ( type === 'outboundorders') {
-      tableName = '';
+      out2.ORIGINAL_ORDER_ID,
+	    CAST( out1.EXT_DHL_CUST_REF1 AS UNSIGNED )`;
+      closureAlias = `) AS total_data`;
+    } else if (type === "outboundorders") {
+      tableName = "";
       selectClauseTrace = `
       (SELECT
-        out1.ORDER_ID AS Transfer_Order_Number, 
-        out6.ORDER_LINE_PRIORITY AS Transfer_Order_Priority, 
-        CAST(out4.ORIGINAL_ORDER_LINE_ID AS UNSIGNED )AS Transfer_Order_Item, 
-        CAST(002 AS SIGNED ) AS Source_Storage_Type, 
+        out1.ORDER_ID AS Transfer_Order_Number,
+        out1.PRIORITY AS Transfer_Order_Priority,
+        CAST( out1.EXT_DHL_CUST_REF1 AS UNSIGNED ) AS Transfer_Order_Item,
+        CAST( 002 AS SIGNED ) AS Source_Storage_Type,
         out1.ITEM_ID AS Article,
-        out1.INVENTORY_CONTAINER_ID AS SSCC_Number,
-        out3.PICK_LOCATION_ID AS Source_Storage_Bin,
-        '' AS Carton_Number,
-        DATE_FORMAT(out1.CREATED_TIMESTAMP, '%Y-%m-%d') AS Creation_Date,
-        IFNULL(out8.EXT_DHL_CUST_REF3,9999999999) AS GR_Number,
-        IFNULL(DATE_FORMAT(out8.UPDATED_TIMESTAMP, '%Y-%m-%d'),DATE_FORMAT(out1.CREATED_TIMESTAMP, '%Y-%m-%d')) AS GR_Date,
-        out6.ORIGINAL_ORDER_LINE_ID ,
-        CAST(SUM(out1.ORIGINAL_QUANTITY) AS SIGNED) AS Dest_target_quantity, 
-        CAST(SUM(out6.PACKED_QUANTITY) AS SIGNED) AS Actual_Qty, 
-        out13.UPDATED_BY AS User,
-        DATE_FORMAT(out6.UPDATED_TIMESTAMP, '%Y-%m-%d') AS Confirmation_Date,
-        DATE_FORMAT(DATE_ADD( out6.UPDATED_TIMESTAMP , INTERVAL 7 HOUR), '%H:%i:%s') AS Confirmation_Time,
-        out1.ORDER_ID AS Delivery,
-        CAST(002 AS SIGNED ) AS Storage_Type,
-        out6.ITEM_ATTRIBUTE1 AS PO_Number,
-        SUBSTRING(out3.CUSTOMER_ID, 7) AS Store_ID,
-        out3.DESTINATION_ADDRESS_FIRSTNAME AS Store_Name,	
-        out4.EXT_DHL_CUST_REF5 AS Konsep,
-        SUBSTRING_INDEX(out5.COLOR_SUFFIX , '-', -1) AS Code_Colour,
-        SUBSTRING_INDEX(out5.COLOR , ',', 1) AS Colour_Description, 
-        SUBSTRING(CONCAT(SUBSTRING_INDEX(out5.SIZE_CODE, '-', -1),out5.EXT_DHL_CUST_REF1,out5.EXT_DHL_CUST_REF5),2) AS Code_Size, 
+        out3.INVENTORY_CONTAINER_ID AS SSCC_Number,
+        out3.LOCATION_ID AS Source_Storage_Bin,
+        0 AS Carton_Number,
+        DATE_FORMAT(out3.CREATED_TIMESTAMP, '%Y-%m-%d') AS Creation_Date,
+        IFNULL( out6.EXT_DHL_CUST_REF3, 9999999999 ) AS GR_Number,
+        IFNULL(DATE_FORMAT(out6.UPDATED_TIMESTAMP, '%Y-%m-%d'),DATE_FORMAT(out3.CREATED_TIMESTAMP, '%Y-%m-%d')) AS GR_Date,
+        IFNULL(CAST((out5.INITIAL_QUANTITY) AS SIGNED), CAST((out12.INITIAL_QUANTITY) AS SIGNED) ) AS Dest_target_quantity,
+        IFNULL(CAST((out5.PACKED_QUANTITY) AS SIGNED),CAST((out12.PACKED_QUANTITY) AS SIGNED) ) AS Actual_Qty,
+        IFNULL(out4.UPDATED_BY,'system@dhl.com') AS USER,
+        IFNULL(DATE_FORMAT(out5.UPDATED_TIMESTAMP, '%Y-%m-%d'),DATE_FORMAT(out12.UPDATED_TIMESTAMP, '%Y-%m-%d') ) AS Confirmation_Date,
+        IFNULL(DATE_FORMAT(DATE_ADD( out5.UPDATED_TIMESTAMP , INTERVAL 7 HOUR), '%H:%i:%s'),DATE_FORMAT(DATE_ADD( out12.UPDATED_TIMESTAMP , INTERVAL 7 HOUR), '%H:%i:%s') ) AS Confirmation_Time,
+        out2.ALTERNATE_ORIGINAL_ORDER_ID AS Delivery,
+        CAST( 002 AS SIGNED ) AS Storage_Type,
+        IFNULL(out3.INVENTORY_ATTRIBUTE1,'9999999999') AS PO_Number,
+        SUBSTRING( out2.EXT_DHL_CUSTOMER_SHIP_TO, 7 ) AS Store_ID,
+        out2.DESTINATION_ADDRESS_FIRSTNAME AS Store_Name,
+        out1.EXT_DHL_CUST_REF5 AS Konsep,
+        SUBSTRING_INDEX(out11.COLOR_SUFFIX , '-', -1) AS Code_Colour,
+        SUBSTRING_INDEX(out11.COLOR , ',', 1) AS Colour_Description, 
+        SUBSTRING(CONCAT(SUBSTRING_INDEX(out11.SIZE_CODE, '-', -1),out11.EXT_DHL_CUST_REF1,out11.EXT_DHL_CUST_REF5),2) AS Code_Size, 
         CASE
-            WHEN out5.SIZE_DESCRIPTION LIKE '%(EUR %' THEN 
+            WHEN out11.SIZE_DESCRIPTION LIKE '%(EUR %' THEN 
                 SUBSTRING(
-                out5.SIZE_DESCRIPTION, 
-                LOCATE('(', out5.SIZE_DESCRIPTION) + 1, 
-                LOCATE(')', out5.SIZE_DESCRIPTION) - LOCATE('(', out5.SIZE_DESCRIPTION) - 1
+                out11.SIZE_DESCRIPTION, 
+                LOCATE('(', out11.SIZE_DESCRIPTION) + 1, 
+                LOCATE(')', out11.SIZE_DESCRIPTION) - LOCATE('(', out11.SIZE_DESCRIPTION) - 1
             ) 
-            WHEN out5.SIZE_CODE LIKE 'HM_%' THEN 
-                SUBSTRING(SUBSTRING_INDEX(out5.SIZE_CODE, '-', 2), 4)
+            WHEN out11.SIZE_CODE LIKE 'HM_%' THEN 
+                SUBSTRING(SUBSTRING_INDEX(out11.SIZE_CODE, '-', 2), 4)
             ELSE 
-                SUBSTRING_INDEX(out5.SIZE_CODE, '-', 2)
+                SUBSTRING_INDEX(out11.SIZE_CODE, '-', 2)
         END AS  Size_Description,
-        out1.GENERATION_NUMBER AS Wave_Number,
-        out13.TASK_ID AS TASK_ID,
-        out1.OLPN_ID AS OLPN_ID,
-        '' AS OLPN_ID2,
-        out7.DESCRIPTION AS Wave_Status,
-        out9.ASN_ID AS ASN_ID,
-        out9.EXT_DHL_CUST_REF7 AS EXT_DHL_CUST_REF7,
+        out1.ORDER_PLANNING_RUN_ID AS Wave_Number,
+        IFNULL(out9.TASK_ID,'AutoPacked') AS TASK_ID,
+        out3.OLPN_ID AS OLPN_1ST,
+        IFNULL(IFNULL(out5.OLPN_ID,out4.OLPN_ID),out3.OLPN_ID ) AS OLPN_2ND,
+        IFNULL(out4.PLANNED_SLOT_ID,'-') AS SLOT_ID,
+        IFNULL(out7.ASN_ID,'-') AS ASN_ID,
+        IFNULL(out7.EXT_DHL_CUST_REF7,'-') AS ORD_NBR,
         out1.PRODUCT_STATUS_ID AS PRODUCT_STATUS_ID,
-        out3.ORDER_TYPE AS ORDER_TYPE,
-        IFNULL(out12.DESCRIPTION,'Cancelled') AS LPN_STATUS,
-        IFNULL(out11.LOCATION_ID,'NOT PUTAWAY') AS LAST_LOCATION
+        out2.ORDER_TYPE AS ORDER_TYPE,
+        IFNULL(out8.DESCRIPTION,'AutoPacked') AS LPN_STATUS,
+        IFNULL(out10.LOCATION_ID,'-') AS LAST_LOCATION 
       
       FROM
-        default_dcinventory.dci_allocation AS out1
-        LEFT JOIN
-        default_pickpack.ppk_olpn out3
+	default_dcorder.dco_order_line out1
+	
+	INNER JOIN default_dcorder.dco_original_order out2 
+		ON out2.ORIGINAL_ORDER_ID = out1.ORIGINAL_ORDER_ID AND
+    out2.ALTERNATE_ORIGINAL_ORDER_ID = out1.ALT_ORIGINAL_ORDER_ID
+		
+	INNER JOIN default_dcinventory.dci_allocation out3 
+		ON out3.ORDER_LINE_ID = out1.ORDER_LINE_ID 
+		AND out3.ORIGINAL_ORDER_ID = out1.ORIGINAL_ORDER_ID 
+		AND out3.ITEM_ID = out1.ITEM_ID
+		
+	 LEFT JOIN
+		 default_task.tsk_task_detail out4
+		 ON
+			 out3.ALLOCATION_ID = out4.ALLOCATION_KEY_ID
+			 AND out3.ITEM_ID = out4.ITEM_ID
+			 AND out3.ORIGINAL_ORDER_ID = out4.ORIGINAL_ORDER_ID
+			 AND out3.ORIGINAL_ORDER_LINE_ID = out4.ORIGINAL_ORDER_LINE_ID
+			 AND out3.INVENTORY_CONTAINER_ID = out4.SOURCE_LOCATION_ID
+			 AND out4.PLANNED_CONTAINER_ID IS NOT NULL
+		 
+	 LEFT JOIN
+		 default_pickpack.ppk_olpn_detail out5
+		 ON
+			 out4.ORG_ID= out5.ORG_ID AND
+			 out4.ORIGINAL_ORDER_ID = out5.ORIGINAL_ORDER_ID AND
+			 out4.ITEM_ID = out5.ITEM_ID AND
+			 out4.OLPN_DETAIL_ID = out5.OLPN_DETAIL_ID AND
+			 out4.ORIGINAL_ORDER_LINE_ID = out5.ORIGINAL_ORDER_LINE_ID 
+		 
+		LEFT JOIN
+		 default_receiving.rcv_asn_line out6
+		 ON
+			 out3.ITEM_ID = out6.ITEM_ID AND	
+			 out3.INVENTORY_ATTRIBUTE1 = out6.INVENTORY_ATTRIBUTE1 AND
+			 out3.PRODUCT_STATUS_ID = out6.PRODUCT_STATUS_ID
+	
+		LEFT JOIN
+		 default_receiving.rcv_asn out7
+		 ON
+			 out6.ASN_ID = out7.EXT_DHL_EXT_ASN_NBR AND
+			 out3.INVENTORY_ATTRIBUTE1 = out7.EXT_DHL_EXT_PO_NBR
+		 
+		 LEFT JOIN
+				default_pickpack.ppk_olpn_detail_status out8
+				ON
+					out5.STATUS = out8.OLPN_DETAIL_STATUS_ID
+				
+		LEFT JOIN
+		 default_task.tsk_task_detail out9
+		 ON
+			 out3.ALLOCATION_ID = out9.ALLOCATION_KEY_ID
+			 AND out3.ORIGINAL_ORDER_ID = out9.ORIGINAL_ORDER_ID
+			 AND out3.ITEM_ID = out9.ITEM_ID
+			 AND out3.OLPN_DETAIL_ID = out9.OLPN_DETAIL_ID
+			 AND out3.ORIGINAL_ORDER_LINE_ID = out9.ORIGINAL_ORDER_LINE_ID 
+			 AND out9.SOURCE_CONTAINER_TYPE_ID = 'LOCATION'
+			 AND out9.PLANNED_CONTAINER_ID IS  NULL
+			 
+		 LEFT JOIN
+				default_dcinventory.dci_inventory out10
+				ON	
+					out3.INVENTORY_CONTAINER_ID = out10.ILPN_ID AND
+					out3.ITEM_ID = out10.ITEM_ID
+					
+		INNER JOIN
+        default_item_master.ite_item out11
         ON 
-          out1.OLPN_ID = out3.OLPN_ID AND
-          out1.ORG_ID= out3.ORG_ID
-        
-        INNER JOIN
-        default_dcorder.dco_order_line out4
-        ON 
-          out1.ORDER_LINE_ID = out4.ORDER_LINE_ID AND
-          out1.ITEM_ID = out4.ITEM_ID AND
-          out1.ORG_ID= out4.ORG_ID
-        
-        INNER JOIN
-        default_item_master.ite_item out5
-        ON 
-          out1.ITEM_ID = out5.ITEM_ID
-          
-        LEFT JOIN
-        default_pickpack.ppk_olpn_detail out6
-        ON
-          out1.ORG_ID= out6.ORG_ID AND
-          out1.OLPN_ID = out6.OLPN_ID AND
-          out1.ITEM_ID = out6.ITEM_ID AND
-          out1.OLPN_DETAIL_ID = out6.OLPN_DETAIL_ID
-          
-        INNER JOIN
-        default_dcinventory.dci_allocation_status out7
-        ON 
-          out1.STATUS = out7.STATUS 
-        
-        LEFT JOIN
-        default_receiving.rcv_asn_line out8
-        ON 
-          out1.ITEM_ID = out8.ITEM_ID AND
-          out1.INVENTORY_ATTRIBUTE1 = out8.INVENTORY_ATTRIBUTE1
-          AND out1.PRODUCT_STATUS_ID = out8.PRODUCT_STATUS_ID
-        
-        LEFT JOIN
-        default_receiving.rcv_asn out9
-        ON 
-          out1.INVENTORY_ATTRIBUTE1 = out9.EXT_DHL_EXT_PO_NBR
-          AND out8.ASN_ID = out9.ASN_ID
-        
-        LEFT JOIN
-        default_receiving.rcv_asn_status out10
-        ON 
-          out9.ASN_STATUS = out10.ASN_STATUS_ID		
-        
-        LEFT JOIN
-        default_dcinventory.dci_inventory out11
-        ON	
-          out1.INVENTORY_CONTAINER_ID = out11.ILPN_ID AND
           out1.ITEM_ID = out11.ITEM_ID
-        
-        LEFT JOIN
-        default_pickpack.ppk_olpn_detail_status out12
-        ON
-          out6.STATUS = out12.OLPN_DETAIL_STATUS_ID
-
-        LEFT JOIN
-        default_task.tsk_task_detail out13
-        ON
-          out1.ALLOCATION_ID = out13.ALLOCATION_KEY_ID
-          AND out1.ITEM_ID = out13.ITEM_ID
+					
+		LEFT JOIN
+		 default_pickpack.ppk_olpn_detail out12
+		 ON
+		 out3.ORG_ID= out12.ORG_ID AND
+		 out3.ORIGINAL_ORDER_ID = out12.ORIGINAL_ORDER_ID AND
+		 out3.ITEM_ID = out12.ITEM_ID AND
+		 out3.OLPN_DETAIL_ID = out12.OLPN_DETAIL_ID AND
+		 out3.ORIGINAL_ORDER_LINE_ID = out12.ORIGINAL_ORDER_LINE_ID
           
         `;
-      
-      groupByTrace = `
-      GROUP BY
-      out1.ORDER_ID, 
-      out1.ITEM_ID,
-      out1.OLPN_ID,
-      out3.PICK_LOCATION_ID,
-      out1.GENERATION_NUMBER,
-      out4.ORIGINAL_ORDER_LINE_ID,
-      out4.EXT_DHL_CUST_REF5,
-      out5.DESCRIPTION,
-      out5.SIZE_DESCRIPTION,
-      out5.COLOR_SUFFIX,
-      out5.COLOR,
-      out6.ORDER_LINE_PRIORITY,
-      out6.ITEM_ATTRIBUTE1,
-      out6.ORIGINAL_ORDER_LINE_ID,
-      out3.CUSTOMER_ID,
-      out3.DESTINATION_ADDRESS_FIRSTNAME,
-      out1.CREATED_TIMESTAMP,
-      out7.DESCRIPTION,
-      out1.INVENTORY_CONTAINER_ID,
-      out8.EXT_DHL_CUST_REF3,
-      out8.UPDATED_TIMESTAMP,
-      out9.ASN_ID,
-      out3.ORDER_TYPE,
-      out12.DESCRIPTION,
-      out11.LOCATION_ID,
-      out1.PRODUCT_STATUS_ID,
-      out1.OLPN_ID,
-      out5.SIZE_CODE,
-      out5.EXT_DHL_CUST_REF1,
-      out5.EXT_DHL_CUST_REF5,
-      out9.EXT_DHL_CUST_REF7,
-      out13.TASK_ID,
-      out6.UPDATED_TIMESTAMP,
-      out13.UPDATED_BY
-      `;
+
+      groupByTrace = ``;
       orderByClauseTrace = `
       ORDER BY
-      out1.ORDER_ID,
-	    out6.ORIGINAL_ORDER_LINE_ID)`;
-      closureAlias = `AS total_data`;
+      out2.ORIGINAL_ORDER_ID,
+	    CAST( out1.EXT_DHL_CUST_REF1 AS UNSIGNED )`;
+      closureAlias = `) AS total_data`;
+    }else if (type === "outboundsto") {
+      tableName = "default_dcorder.dco_order_line out4";
+      joinClause = `
+        INNER JOIN default_dcorder.dco_original_order out2 
+	      ON
+        out2.ORIGINAL_ORDER_ID = out4.ORIGINAL_ORDER_ID AND
+        out2.ALTERNATE_ORIGINAL_ORDER_ID = out4.ALT_ORIGINAL_ORDER_ID 
+        
+        `;
+      selectClause = `
+       
+        DATE_FORMAT( DATE_ADD( out2.UPDATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS UPDATED_TIMESTAMP_DO,
+        out2.ORDER_TYPE,
+        out4.PRODUCT_STATUS_ID,
+        out2.EXT_DHL_CUSTOMER_SHIP_TO AS SHIP_TO,
+        out4.ORDER_ID,
+        out2.ORIGINAL_ORDER_ID,
+        out4.STATUS AS STATUS_LINE,
+        out4.EXT_DHL_CUST_REF1 AS DO_LINE,
+        out4.ITEM_ID,
+        out4.EXT_DHL_CUST_REF5 AS CONCEPT,
+        CAST( out4.ORDERED_QUANTITY AS SIGNED ) AS ORDERED,
+        CAST( out4.ALLOCATED_QUANTITY AS SIGNED ) AS ALLOCATED,
+        CAST( out4.PACKED_QUANTITY AS SIGNED ) AS PACKED,
+        CAST( out4.SHIPPED_QUANTITY AS SIGNED ) AS SHIPPED,
+        DATE_FORMAT( DATE_ADD( out2.UPDATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS UPDATED_TIMESTAMP_LINE,
+        DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS CREATED_TIMESTAMP_DO,
+        out2.ALTERNATE_ORIGINAL_ORDER_ID AS SO,
+        IFNULL(out4.ORDER_PLANNING_RUN_ID, '-') AS Wave,
+        IF(out2.MINIMUM_STATUS IN ('8000','9000') ,'CLOSE','OPEN') AS LAST_STATUS `;
+      havingClause = `
+      out2.BUSINESS_UNIT_ID = 'CID001683'
+      `;
+      orderByClause = `
+      out2.ORIGINAL_ORDER_ID,
+      out2.CREATED_TIMESTAMP,
+      CAST( out4.EXT_DHL_CUST_REF1 AS UNSIGNED )
+      `;
+    }else if (type === "outboundb2c") {
+      tableName = "default_pickpack.ppk_olpn_detail out1";
+      joinClause = `
+        
+        INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
+        INNER JOIN default_dcorder.dco_order_line out4 ON out2.ORIGINAL_ORDER_ID = out4.original_order_id 
+        AND out2.BUSINESS_UNIT_ID = out4.BUSINESS_UNIT_ID 
+        AND out1.ORDER_LINE_ID = out4.ORDER_LINE_ID
+        LEFT JOIN default_pickpack.ppk_olpn out3 ON out1.BUSINESS_UNIT_ID = out3.BUSINESS_UNIT_ID 
+        AND out1.OLPN_ID = out3.OLPN_ID 
+        `;
+      selectClause = `
+       
+        DATE_FORMAT(DATE_ADD(out2.UPDATED_TIMESTAMP, INTERVAL 7 HOUR), '%Y-%m-%d %H:%i:%s')  AS UPDATED_TIMESTAMP,
+        out2.ORIGINAL_ORDER_ID,
+        CASE
+            WHEN out2.ORDER_TYPE IN ('TO_B2B','B2C_SHP','B2C_ZLR','B2C_COM') THEN '2792'
+            WHEN out2.ORDER_TYPE IN ('TO_B2C','B2B_A','B2B_M','B2B_MGR','B2B_C') THEN '2992'
+            ELSE out4.EXT_DHL_CUST_REF4
+        END AS PRODUCT_STATUS_ID,
+        out2.MINIMUM_STATUS AS STATUS_DO,
+        CASE
+            WHEN out2.MINIMUM_STATUS = '1000' THEN 'Released'
+            WHEN out2.MINIMUM_STATUS = '2090' THEN 'Allocated'
+            WHEN out2.MINIMUM_STATUS = '1000' THEN 'Released'
+            WHEN out2.MINIMUM_STATUS = '7200' THEN 'Packed'
+            WHEN out2.MINIMUM_STATUS = '8000' THEN 'Shipped'
+            ELSE out2.MINIMUM_STATUS
+        END AS DO_DESC,
+        out4.EXT_DHL_CUST_REF1 AS DO_LINE,
+        out4.EXT_DHL_CUST_REF2 AS STO_LINE,
+        out1.ITEM_ID,
+        out1.OLPN_ID,
+        CAST(out1.PACKED_QUANTITY AS SIGNED) AS PACKED_QUANTITY,
+        out2.ORDER_TYPE,
+        out3.STATUS AS STATUS_OLPN,
+        CASE
+            WHEN out3.STATUS = '0000' THEN 'Initiated'
+            WHEN out3.STATUS = '1000' THEN 'Created'
+            WHEN out3.STATUS = '6800' THEN 'Picking'
+            WHEN out3.STATUS = '7000' THEN 'Picked'
+            WHEN out3.STATUS = '7100' THEN 'Packing'
+            WHEN out3.STATUS = '7200' THEN 'Packed'
+            WHEN out3.STATUS = '7900' THEN 'PendingShipConfirm'
+            WHEN out3.STATUS = '8000' THEN 'Shipped'
+            WHEN out3.STATUS = '9000' THEN 'Cancelled'
+            ELSE out3.STATUS
+        END AS OLPN_DESC,
+        out2.EXT_DHL_CUSTOMER_SHIP_TO AS SHIP_TO,
+        out2.DESTINATION_ADDRESS_FIRSTNAME AS CUSTOMER,
+        out3.CONTAINER_TYPE_ID,
+	      out3.CONTAINER_SIZE_ID,
+        DATE_FORMAT(DATE_ADD(out1.UPDATED_TIMESTAMP, INTERVAL 7 HOUR), '%Y-%m-%d %H:%i:%s') AS UPDATED_TIMESTAMP_OLPN,
+        DATE_FORMAT(DATE_ADD(out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR), '%Y-%m-%d %H:%i:%s') AS CREATED_TIMESTAMP_DO,
+          CASE
+              WHEN LOCATE( 'DhlCustRef1', out2.JSON_STORE ) > 0 THEN
+              SUBSTRING( out2.JSON_STORE, LOCATE( 'DhlCustRef1', out2.JSON_STORE ) + 15, 10 ) ELSE NULL 
+          END AS SO `;
+      havingClause = `
+      out1.BUSINESS_UNIT_ID = 'CID001683'
+      AND out2.MINIMUM_STATUS IN ('1000','2090','7200','8000','9000')
+      AND out2.ORDER_TYPE IN ('TO_B2B','B2C_SHP','B2C_ZLR','B2C_COM')
+      `;
+      orderByClause = "ORDER BY out2.UPDATED_TIMESTAMP DESC";
     }
-    
+    else if (type === "outboundmonitoring") {
+      tableName = "default_dcorder.dco_original_order_line out1";
+      joinClause = `
+        INNER JOIN default_dcorder.dco_original_order out2 ON out2.BUSINESS_UNIT_ID = out1.BUSINESS_UNIT_ID #AND out2.EXT_DHL_CUST_ORD_REF = out1.ALT_ORIGINAL_ORDER_ID
+	      AND out2.PK = out1.ORIGINAL_ORDER_PK 
+        `;
+      selectClause = `
+        DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ) AS CREATION_DATE,
+        out1.PRODUCT_STATUS_ID,
+        out2.ORDER_TYPE,
+        #out2.MINIMUM_STATUS,
+        CASE
+                  WHEN out2.MINIMUM_STATUS = '1000' THEN
+                  'Released'
+                  WHEN out2.MINIMUM_STATUS = '2090' THEN
+                  'Allocated'
+                  WHEN out2.MINIMUM_STATUS = '1000' THEN
+                  'Released'
+                  WHEN out2.MINIMUM_STATUS = '7200' THEN
+                  'Packed'
+                  WHEN out2.MINIMUM_STATUS = '8000' THEN
+                  'Shipped'
+                   WHEN out2.MINIMUM_STATUS = '9000' THEN
+                  'Cancelled'
+                  ELSE out2.MINIMUM_STATUS
+                END AS DO_DESC, 
+        COUNT(DISTINCT out2.ORIGINAL_ORDER_ID) AS COUNT_ORDER,
+        CAST( SUM(out1.ORDERED_QUANTITY) AS SIGNED ) AS SUM_ORDER `;
+      havingClause = `
+      out1.BUSINESS_UNIT_ID = 'CID001683'
+      AND out2.MINIMUM_STATUS IN ('1000','2090','7200','8000','9000')
+      `;
+      groupByTrace = `
+      GROUP BY
+      DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ),
+      out1.PRODUCT_STATUS_ID,
+      out2.ORDER_TYPE,
+      out2.MINIMUM_STATUS
+      `;
+      orderByClause = `
+      ORDER BY
+      DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ),
+      out1.PRODUCT_STATUS_ID,
+      out2.ORDER_TYPE,
+	    out2.MINIMUM_STATUS`;
+      closureAlias = `)AS grouped_data;`;
+    }else if (type === "outboundappsformat") {
+      tableName = "";
+      selectClauseTrace = `
+      (SELECT
+        DATE_FORMAT( DATE_ADD( out4.SHIPPED_DATE_TIME, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS SHIPPED_DATE_TIME,
+        out2.ALTERNATE_ORIGINAL_ORDER_ID AS ORDER_CUST_REF1,
+        CASE
+          WHEN LOCATE( 'DhlCustRef6', out2.JSON_STORE ) > 0 THEN
+          SUBSTRING( out2.JSON_STORE, LOCATE( 'DhlCustRef6', out2.JSON_STORE ) + 15, 8 ) ELSE NULL 
+        END AS ORDER_CUST_REF6,
+        out4.STATUS AS ORDER_STATUS_DESCRIPTION,
+        out4.ORDER_PLANNING_RUN_ID,
+        out2.ORDER_TYPE AS ORDER_TYPE,
+        out2.EXT_DHL_CUSTOMER_SHIP_TO AS SHIPTO,
+        out2.DESTINATION_ADDRESS_FIRSTNAME,
+        out4.ORDER_ID AS ORDER_ID,
+        out4.ORIGINAL_ORDER_ID AS ORIGINAL_ORDER_ID,
+        out4.ORDER_LINE_ID,
+        out4.ITEM_ID,
+        out5.DESCRIPTION AS ITEM_DESCRIPTION,
+        out4.EXT_DHL_CUST_REF5 AS ITEM_STYLE,
+        CAST( out1.INITIAL_QUANTITY AS SIGNED ) AS INITIAL_QUANTITY,
+        CAST( out1.PACKED_QUANTITY AS SIGNED ) AS PACKED_QUANTITY,
+        IFNULL( out1.UPDATED_BY, 'system@dhl.com' ) AS ORDER_UPDATED_BY,
+        '' AS PACKER,
+        IFNULL( out3.OLPN_ID, '-' ) AS OLPN_ID,
+        out3.CONTAINER_TYPE_ID,
+        out3.CONTAINER_SIZE_ID,
+        out3.PICK_LOCATION_ID AS CURRENT_LOCATION,
+        out1.PRODUCT_STATUS_ID,
+        '' AS SHIPMENT_SEAL_ID,
+        '' AS TRAILER_ID,
+        out3.SHIPMENT_ID AS SHIPMENT_ID,
+        DATE_FORMAT( DATE_ADD( out1.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS FACILITY_LPN_CREATED_TIMESTAMP,
+        DATE_FORMAT( DATE_ADD( out1.UPDATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d %H:%i:%s' ) AS FACILITY_LPN_UPDATED_TIMESTAMP,
+        out7.DESCRIPTION AS LPN_STATUS_DESCRIPTION,
+        out6.TASK_ID
+      FROM
+        default_pickpack.ppk_olpn_detail out1
+        INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
+        INNER JOIN default_dcorder.dco_order_line out4 ON out2.ORIGINAL_ORDER_ID = out4.original_order_id 
+        AND out2.BUSINESS_UNIT_ID = out4.BUSINESS_UNIT_ID 
+        AND out1.ORDER_LINE_ID = out4.ORDER_LINE_ID
+        LEFT JOIN default_pickpack.ppk_olpn out3 ON out1.BUSINESS_UNIT_ID = out3.BUSINESS_UNIT_ID 
+        AND out1.OLPN_ID = out3.OLPN_ID
+        INNER JOIN default_item_master.ite_item out5 ON out1.ITEM_ID = out5.ITEM_ID
+        
+        LEFT JOIN default_task.tsk_task_detail out6 ON
+        out6.OLPN_ID = out3.OLPN_ID
+        AND out6.OLPN_DETAIL_ID = out1.OLPN_DETAIL_ID
+        AND out6.ITEM_ID = out1.ITEM_ID
+        AND out6.SOURCE_CONTAINER_TYPE_ID = 'LOCATION'
+        AND out6.ORIGINAL_ORDER_LINE_ID = out1.ORIGINAL_ORDER_LINE_ID
+        
+        LEFT JOIN default_pickpack.ppk_olpn_detail_status out7 ON 
+        out1.STATUS = out7.OLPN_DETAIL_STATUS_ID
+        `;
+
+      groupByTrace = ``;
+      orderByClauseTrace = `
+      ORDER BY
+      out2.ORIGINAL_ORDER_ID,
+	    OLPN_ID`;
+      closureAlias = `) AS total_data`;
+    }
 
     // Build the WHERE clause
     const whereConditions = [];
@@ -623,95 +821,97 @@ router.get('/', async (req, res, next) => {
 
     // Build dynamic WHERE clause from search conditions
     const buildWhereClause = (conditions) => {
-      if (!conditions || conditions.length === 0) return '';
-      
-      let whereClause = '';
-      
+      if (!conditions || conditions.length === 0) return "";
+
+      let whereClause = "";
+
       conditions.forEach((condition, index) => {
         if (index > 0) {
           whereClause += ` ${condition.boolean} `;
         }
-        
+
         const fieldName = condition.field; // Use the query field directly from frontend
-        
+
         switch (condition.operation) {
-          case '=':
-            whereClause += `${fieldName} = ?`;
-            queryParams.push(condition.value);
+          case "=":
+            whereClause += `${fieldName} = '${condition.value}'`;
             break;
-          case '!=':
-            whereClause += `${fieldName} != ?`;
-            queryParams.push(condition.value);
+          case "!=":
+            whereClause += `${fieldName} != '${condition.value}'`;
             break;
-          case 'LIKE':
-            whereClause += `${fieldName} LIKE ?`;
-            queryParams.push(`%${condition.value}%`);
+          case "LIKE":
+            whereClause += `${fieldName} LIKE '%${condition.value}%'`;
             break;
-          case 'BEGINS_WITH':
-            whereClause += `${fieldName} LIKE ?`;
-            queryParams.push(`${condition.value}%`);
+          case "BEGINS_WITH":
+            whereClause += `${fieldName} LIKE '${condition.value}%'`;
             break;
-          case 'ENDS_WITH':
-            whereClause += `${fieldName} LIKE ?`;
-            queryParams.push(`%${condition.value}`);
+          case "ENDS_WITH":
+            whereClause += `${fieldName} LIKE '%${condition.value}'`;
             break;
-          case 'IN':
-            const values = condition.value.split(',').map(v => v.trim()).filter(v => v);
+          case "IN":
+            const values = condition.value
+              .split(",")
+              .map((v) => v.trim())
+              .filter((v) => v);
             if (values.length > 0) {
-              const placeholders = values.map(() => '?').join(',');
-              whereClause += `${fieldName} IN (${placeholders})`;
-              queryParams.push(...values);
+              const formattedValues = values.map((v) => `'${v}'`).join(",");
+              whereClause += `${fieldName} IN (${formattedValues})`;
             }
             break;
-          case '>':
-            whereClause += `${fieldName} > ?`;
-            queryParams.push(condition.value);
+          case ">":
+            whereClause += `${fieldName} > '${condition.value}'`;
             break;
-          case '<':
-            whereClause += `${fieldName} < ?`;
-            queryParams.push(condition.value);
+          case "<":
+            whereClause += `${fieldName} < '${condition.value}'`;
             break;
-          case '>=':
-            whereClause += `${fieldName} >= ?`;
-            queryParams.push(condition.value);
+          case ">=":
+            whereClause += `${fieldName} >= '${condition.value}'`;
             break;
-          case '<=':
-            whereClause += `${fieldName} <= ?`;
-            queryParams.push(condition.value);
+          case "<=":
+            whereClause += `${fieldName} <= '${condition.value}'`;
             break;
-          case 'IS_NULL':
+          case "IS_NULL":
             whereClause += `${fieldName} IS NULL`;
             break;
-          case 'IS_NOT_NULL':
+          case "IS_NOT_NULL":
             whereClause += `${fieldName} IS NOT NULL`;
             break;
           default:
-            whereClause += `${fieldName} = ?`;
-            queryParams.push(condition.value);
+            whereClause += `${fieldName} = '${condition.value}'`;
         }
       });
-      
+
       return whereClause;
     };
 
     // Add base conditions for different types
     const addBaseConditions = () => {
-      if (type === 'stockinventory') {
+      if (type === "stockinventory") {
         whereConditions.push(havingClause);
-      } else if (type === 'stockinbound') {
+      } else if (type === "stockinbound") {
         whereConditions.push(havingClause);
-      } else if (type === 'stockoutbound') {
+      } else if (type === "stockoutbound") {
         whereConditions.push(havingClause);
-      } else if (type === 'inboundallocation') {
-        whereConditions.push(`out3.ORG_ID = 'ID_0344' AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M')`);
-      } else if (type === 'outboundorders') {
-        whereConditions.push(`out3.ORG_ID = 'ID_0344' AND out3.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M','B2B_C','TO_B2C') AND out13.ACTUAL_START_TIME IS NULL`);
+      } else if (type === "outboundb2c") {
+        whereConditions.push(havingClause);
+      } else if (type === "outboundmonitoring") {
+        whereConditions.push(havingClause);
+      } else if (type === "inboundallocation") {
+        whereConditions.push(
+          `out3.ORG_ID = 'ID_0344' AND out2.ORDER_TYPE IN ('B2B_A','B2B_MGR','B2B_M')`
+        );
+      }else if (type === "outboundsto") {
+        whereConditions.push(havingClause);
+      } else if (type === "outboundorders" || "outboundappsformat" ) {
+        whereConditions.push(`out3.ORG_ID = 'ID_0344' `);
+      } else if (type === "tracetransaction") {
+        whereConditions.push(` `);
       }
     };
 
     // Add base conditions
     addBaseConditions();
-    
+
     // Add dynamic search conditions
     if (conditions.length > 0) {
       const dynamicWhere = buildWhereClause(conditions);
@@ -719,51 +919,78 @@ router.get('/', async (req, res, next) => {
         whereConditions.push(`(${dynamicWhere})`);
       }
     }
-    
 
-    
     // Get paginated results
     let whereClause = ``;
     let countQuery = ``;
-    
+    let traceWhereClause = ``;
+
     if (
-      type === 'stockinventory' ||
-      type === 'stockinbound' ||
-      type === 'stockoutbound' 
+      //Regular Table
+      type === "stockinventory" ||
+      type === "stockinbound" ||
+      type === "stockoutbound" ||
+      type === "outboundsto" ||
+      type === "outboundb2c"       
     ) {
-      whereClause = whereConditions.length 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
+      whereClause = whereConditions.length
+        ? `WHERE ${whereConditions.join(" AND ")}`
         : `WHERE ${havingClause}`;
       countQuery = `SELECT COUNT(*) as total_count FROM 
-      ${tableName} 
-      ${joinClause} 
-      ${whereClause}`;
-      }
-      else if (type === 'tracetransaction'  ) {
+    ${tableName} 
+    ${joinClause} 
+    ${whereClause}`;
+    } else if (
+      //Regular Table
+      type === "outboundmonitoring"  
+    ) {
+    whereClause = whereConditions.length
+      ? `WHERE ${whereConditions.join(" AND ")}`
+      : `WHERE ${havingClause}`;
+    countQuery = `SELECT  COUNT(*) as total_count FROM (
+    SELECT 
+    ${selectClause} 
+    FROM 
+    ${tableName} 
+    ${joinClause} 
+    ${whereClause}
+    ${groupByTrace}
+    ${orderByClause}
+    ${closureAlias}
+    `;
+    } else if (type === "tracetransaction") {
       // For trace transaction, we need special handling
-      const traceWhereClause = conditions.length > 0 && buildWhereClause(conditions) ? 
-        `WHERE ${buildWhereClause(conditions)}` : '';
-      countQuery = `SELECT COUNT(*) as total_count FROM ${selectClauseTrace} ${traceWhereClause} ${groupByTrace} ${selectClauseTrace2} ${groupByTrace2} ${orderByClauseTrace} ${closureAlias}`;
-    }
-    else if (type === 'inboundallocation' || type === 'outboundorders') {
-      whereClause = whereConditions.length 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
+      const dynamicWhere = buildWhereClause(conditions);
+      traceWhereClause = dynamicWhere ? `WHERE ${dynamicWhere}` : "";
+      countQuery = `SELECT COUNT(*) as total_count FROM 
+    ${selectClauseTrace} 
+    ${traceWhereClause} 
+    ${groupByTrace} 
+    ${selectClauseTrace2}
+    ${traceWhereClause}
+    ${groupByTrace2} 
+    ${orderByClauseTrace} 
+    ${closureAlias} 
+    `;
+    } else if (type === "inboundallocation" || type === "outboundorders" || type === "outboundappsformat") {
+      whereClause = whereConditions.length
+        ? `WHERE ${whereConditions.join(" AND ")}`
         : ``;
       countQuery = `SELECT COUNT(*) as total_count FROM  
-        ${selectClauseTrace} 
-        ${whereClause} 
-        ${groupByTrace} 
-        ${orderByClauseTrace} 
-        ${closureAlias}`;
+    ${selectClauseTrace} 
+    ${whereClause} 
+    ${groupByTrace} 
+    ${closureAlias}`;
     }
-    
-    console.log('Count Query:', countQuery);
-    console.log('Query Params:', queryParams);
 
-    const [countResult] = await db.query(countQuery, queryParams);
-    console.log('Count Result:', countResult);
+    // Log the count query for debugging
+    console.log("Count Query:", countQuery);
 
-    if (!countResult || countResult.total_count === undefined) {
+    // Execute the count query
+    const [countResult] = await db.query(countQuery);
+    console.log("Count Result:", countResult);
+
+    if (!countResult || !countResult.total_count) {
       console.log('Invalid count result. Returning empty data.');
       return res.json({
         data: [],
@@ -803,49 +1030,70 @@ router.get('/', async (req, res, next) => {
     // Get paginated results
     let paginatedQuery = ``;
     if (
-      type === 'stockinventory' ||
-      type === 'stockinbound' ||
-      type === 'stockoutbound' 
-      ) {
+      type === "stockinventory" ||
+      type === "stockinbound" ||
+      type === "stockoutbound" ||
+      type === "outboundsto" ||
+      type === "outboundb2c"
+    ) {
       paginatedQuery = `SELECT ${selectClause} FROM ${tableName} ${joinClause} ${whereClause}    
-      LIMIT ? OFFSET ?`;
-      }
-      else if (type === 'tracetransaction'  ) {
-        const traceWhereClause = conditions.length > 0 && buildWhereClause(conditions) ? 
-          `WHERE ${buildWhereClause(conditions)}` : '';
-        paginatedQuery = `${selectClauseTrace} ${traceWhereClause} ${groupByTrace} ${selectClauseTrace2} ${groupByTrace2} ${orderByClauseTrace} 
-      LIMIT ? OFFSET ?`;
-    }
-    else if (type === 'inboundallocation' || type === 'outboundorders') {
-      paginatedQuery = `${selectClauseTrace} ${whereClause} ${groupByTrace} ${orderByClauseTrace} 
-      LIMIT ? OFFSET ?`;
-    }
-    console.log('Paginated Query:', paginatedQuery);
-    console.log('Paginated Query Params:', [...queryParams, Number(limit), offset]);
+    LIMIT ${Number(limit)} OFFSET ${offset};`;
+    } else if (
+      type === "outboundmonitoring" 
+    ) {
+      paginatedQuery = `SELECT ${selectClause} FROM ${tableName} ${joinClause} ${whereClause} ${groupByTrace} ${orderByClause} 
+    LIMIT ${Number(limit)} OFFSET ${offset};`;
+    }else if (type === "tracetransaction") {
+      const dynamicWhere = buildWhereClause(conditions);
+      const traceWhereClause2 = dynamicWhere ? `WHERE ${dynamicWhere}` : "";
 
+      paginatedQuery = `
+        SELECT * FROM 
+        ${selectClauseTrace} 
+        ${traceWhereClause2}
+        ${groupByTrace} 
+        ${selectClauseTrace2}
+        ${traceWhereClause}   
+        ${groupByTrace2} 
+        ${orderByClauseTrace}
+        ${closureAlias}
+        LIMIT ${Number(limit)} OFFSET ${offset};`;
+    } else if (type === "inboundallocation" || type === "outboundorders" || type === "outboundappsformat") {
+      whereClause = whereConditions.length
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : ``;
+      paginatedQuery = `
+        ${selectClauseTrace} 
+        ${whereClause} 
+        ${groupByTrace} 
+        ) ;`;
+    }
+
+    console.log("Paginated Query:", paginatedQuery);
     try {
-      const items = await db.query(paginatedQuery, [...queryParams, Number(limit), offset]);
+      //const items = await db.query(paginatedQuery, queryParams);
+      const items = await db.query(paginatedQuery);
       console.log(`Success Retrieve Data!! 
 Menu Type      : ${type} 
-Total Row Data : ${total} `);
+Total Row Data : ${countResult.total_count} `);
       res.json({
         data: items,
         total,
         page: Number(page),
-        totalPages: Math.ceil(total / Number(limit))
+        totalPages: Math.ceil(total / Number(limit)),
       });
     } catch (error) {
-      console.log('Error occurred while fetching paginated results:', error);
+      console.log("Error occurred while fetching paginated results:", error);
       next(error);
     }
   } catch (error) {
-    console.log('Error occurred:', error);
+    console.log("Error occurred:", error);
     next(error);
   }
 });
 
 // Get dashboard statistics
-router.get('/stats', async (req, res, next) => {
+router.get("/stats", async (req, res, next) => {
   try {
     // Get total inventory
     const [totalInventory] = await db.query(
@@ -885,33 +1133,35 @@ router.get('/stats', async (req, res, next) => {
       `
     );
 
-    console.log('Total Inventory Result:', totalInventory.total);
-    console.log('Total Inbound Result:', totalInbound.total);
-    console.log('Total Outbound Result:', totalOutbound.total);
-      
+    console.log("Total Inventory Result:", totalInventory.total);
+    console.log("Total Inbound Result:", totalInbound.total);
+    console.log("Total Outbound Result:", totalOutbound.total);
+
     res.json({
-      totalInventory: (totalInventory.total || 0).toLocaleString('id-ID'),
-      totalInbound: (totalInbound.total || 0).toLocaleString('id-ID'),
-      totalOutbound: (totalOutbound.total || 0).toLocaleString('id-ID')
+      totalInventory: (totalInventory.total || 0).toLocaleString("id-ID"),
+      totalInbound: (totalInbound.total || 0).toLocaleString("id-ID"),
+      totalOutbound: (totalOutbound.total || 0).toLocaleString("id-ID"),
     });
   } catch (error) {
     next(error);
   }
 });
 
-
-
-
 // Get a record by ID
-router.get('/:id', async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [records] = await db.query('SELECT * FROM default_inventory_management WHERE id = ?', [id]);
-    
+    const [
+      records,
+    ] = await db.query(
+      "SELECT * FROM default_inventory_management WHERE id = ?",
+      [id]
+    );
+
     if (records.length === 0) {
-      return res.status(404).json({ error: 'Record not found' });
+      return res.status(404).json({ error: "Record not found" });
     }
-    
+
     res.json(records[0]);
   } catch (error) {
     next(error);
@@ -919,20 +1169,27 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Create a new record
-router.post('/', async (req, res, next) => {
+router.post("/", async (req, res, next) => {
   try {
     const { name, description, price, stock } = req.body;
-    
+
     if (!name || price === undefined) {
-      return res.status(400).json({ error: 'Name and price are required' });
+      return res.status(400).json({ error: "Name and price are required" });
     }
-    
-    const [result] = await db.query(
-      'INSERT INTO default_inventory_management (name, description, price, stock) VALUES (?, ?, ?, ?)',
-      [name, description || '', price, stock || 0]
+
+    const [
+      result,
+    ] = await db.query(
+      "INSERT INTO default_inventory_management (name, description, price, stock) VALUES (?, ?, ?, ?)",
+      [name, description || "", price, stock || 0]
     );
-    
-    const [newRecord] = await db.query('SELECT * FROM default_inventory_management WHERE id = ?', [result.insertId]);
+
+    const [
+      newRecord,
+    ] = await db.query(
+      "SELECT * FROM default_inventory_management WHERE id = ?",
+      [result.insertId]
+    );
     res.status(201).json(newRecord[0]);
   } catch (error) {
     next(error);
@@ -940,26 +1197,36 @@ router.post('/', async (req, res, next) => {
 });
 
 // Update a record
-router.put('/:id', async (req, res, next) => {
+router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, description, price, stock } = req.body;
-    
+
     if (!name || price === undefined) {
-      return res.status(400).json({ error: 'Name and price are required' });
+      return res.status(400).json({ error: "Name and price are required" });
     }
-    
-    const [existingRecord] = await db.query('SELECT * FROM default_inventory_management WHERE id = ?', [id]);
-    if (existingRecord.length === 0) {
-      return res.status(404).json({ error: 'Record not found' });
-    }
-    
-    await db.query(
-      'UPDATE default_inventory_management SET name = ?, description = ?, price = ?, stock = ? WHERE id = ?',
-      [name, description || '', price, stock || 0, id]
+
+    const [
+      existingRecord,
+    ] = await db.query(
+      "SELECT * FROM default_inventory_management WHERE id = ?",
+      [id]
     );
-    
-    const [updatedRecord] = await db.query('SELECT * FROM default_inventory_management WHERE id = ?', [id]);
+    if (existingRecord.length === 0) {
+      return res.status(404).json({ error: "Record not found" });
+    }
+
+    await db.query(
+      "UPDATE default_inventory_management SET name = ?, description = ?, price = ?, stock = ? WHERE id = ?",
+      [name, description || "", price, stock || 0, id]
+    );
+
+    const [
+      updatedRecord,
+    ] = await db.query(
+      "SELECT * FROM default_inventory_management WHERE id = ?",
+      [id]
+    );
     res.json(updatedRecord[0]);
   } catch (error) {
     next(error);
@@ -967,153 +1234,25 @@ router.put('/:id', async (req, res, next) => {
 });
 
 // Delete a record
-router.delete('/:id', async (req, res, next) => {
+router.delete("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    const [existingRecord] = await db.query('SELECT * FROM default_inventory_management WHERE id = ?', [id]);
+
+    const [
+      existingRecord,
+    ] = await db.query(
+      "SELECT * FROM default_inventory_management WHERE id = ?",
+      [id]
+    );
     if (existingRecord.length === 0) {
-      return res.status(404).json({ error: 'Record not found' });
+      return res.status(404).json({ error: "Record not found" });
     }
-    
-    await db.query('DELETE FROM default_inventory_management WHERE id = ?', [id]);
+
+    await db.query("DELETE FROM default_inventory_management WHERE id = ?", [
+      id,
+    ]);
     res.status(204).end();
   } catch (error) {
-    next(error);
-  }
-});
-
-export default router;
-
-// Get order summary dashboard data
-router.get('/order-summary', async (req, res, next) => {
-  try {
-    const { 
-      startDate = '2025-08-01', 
-      endDate = '', 
-      orderTypes = '',
-      page = 1,
-      limit = 1000
-    } = req.query;
-
-    // Build WHERE conditions
-    const whereConditions = [];
-    const queryParams = [];
-
-    // Base conditions
-    whereConditions.push(`out1.BUSINESS_UNIT_ID = 'CID001683'`);
-    whereConditions.push(`out2.MINIMUM_STATUS IN ('1000', '2090', '7200', '8000', '9000')`);
-    whereConditions.push(`out2.ORDER_TYPE IN ('TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM')`);
-
-    // Date range filter
-    if (startDate) {
-      whereConditions.push(`out2.CREATED_TIMESTAMP >= ?`);
-      queryParams.push(`${startDate} 00:00:00`);
-    }
-    if (endDate) {
-      whereConditions.push(`out2.CREATED_TIMESTAMP <= ?`);
-      queryParams.push(`${endDate} 23:59:59`);
-    }
-
-    // Order type filter
-    if (orderTypes) {
-      const types = orderTypes.split(',').map(type => type.trim()).filter(type => type);
-      if (types.length > 0) {
-        const placeholders = types.map(() => '?').join(',');
-        whereConditions.push(`out2.ORDER_TYPE IN (${placeholders})`);
-        queryParams.push(...types);
-      }
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
-    // Main query
-    const mainQuery = `
-      SELECT
-        DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ) AS CREATION_DATE,
-        out2.ORDER_TYPE,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '1000' THEN out2.ORIGINAL_ORDER_ID END) AS Released_Ord,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '2090' THEN out2.ORIGINAL_ORDER_ID END) AS Allocated_Ord,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '7200' THEN out2.ORIGINAL_ORDER_ID END) AS Packed_Ord,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '8000' THEN out2.ORIGINAL_ORDER_ID END) AS Shipped_Ord,
-        CAST( COUNT( DISTINCT out2.ORIGINAL_ORDER_ID) AS SIGNED ) AS Total_Order,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '1000' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Released_Qty,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '2090' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Allocated_Qty,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '7200' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Packed_Qty,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '8000' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Shipped_Qty,
-        CAST( SUM(out1.INITIAL_QUANTITY) AS SIGNED ) AS Total_Qty
-      FROM
-        default_pickpack.ppk_olpn_detail out1
-        INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
-        INNER JOIN default_dcorder.dco_order_line out4 ON out2.ORIGINAL_ORDER_ID = out4.original_order_id 
-        AND out2.BUSINESS_UNIT_ID = out4.BUSINESS_UNIT_ID 
-        AND out1.ORDER_LINE_ID = out4.ORDER_LINE_ID
-        LEFT JOIN default_pickpack.ppk_olpn out3 ON out1.BUSINESS_UNIT_ID = out3.BUSINESS_UNIT_ID 
-        AND out1.OLPN_ID = out3.OLPN_ID 
-      ${whereClause}
-      GROUP BY
-        DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ),
-        out2.ORDER_TYPE
-      ORDER BY 
-        CREATION_DATE DESC,
-        out2.ORDER_TYPE
-      LIMIT ? OFFSET ?
-    `;
-
-    // Count query for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total_count FROM (
-        SELECT
-          DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ) AS CREATION_DATE,
-          out2.ORDER_TYPE
-        FROM
-          default_pickpack.ppk_olpn_detail out1
-          INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
-          INNER JOIN default_dcorder.dco_order_line out4 ON out2.ORIGINAL_ORDER_ID = out4.original_order_id 
-          AND out2.BUSINESS_UNIT_ID = out4.BUSINESS_UNIT_ID 
-          AND out1.ORDER_LINE_ID = out4.ORDER_LINE_ID
-          LEFT JOIN default_pickpack.ppk_olpn out3 ON out1.BUSINESS_UNIT_ID = out3.BUSINESS_UNIT_ID 
-          AND out1.OLPN_ID = out3.OLPN_ID 
-        ${whereClause}
-        GROUP BY
-          DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ),
-          out2.ORDER_TYPE
-      ) as grouped_data
-    `;
-
-    console.log('Order Summary Query:', mainQuery);
-    console.log('Query Params:', queryParams);
-
-    // Get total count
-    const [countResult] = await db.query(countQuery, queryParams);
-    const total = countResult?.total_count || 0;
-
-    if (total === 0) {
-      return res.json({
-        data: [],
-        total: 0,
-        page: Number(page),
-        totalPages: 0
-      });
-    }
-
-    // Calculate offset
-    const offset = (Number(page) - 1) * Number(limit);
-
-    // Get paginated results
-    const items = await db.query(mainQuery, [...queryParams, Number(limit), offset]);
-    
-    console.log(`Order Summary Success! Total: ${total}, Page: ${page}`);
-    
-    res.json({
-      data: items,
-      total,
-      page: Number(page),
-      totalPages: Math.ceil(total / Number(limit))
-    });
-
-  } catch (error) {
-    console.error('Order Summary Error:', error);
     next(error);
   }
 });

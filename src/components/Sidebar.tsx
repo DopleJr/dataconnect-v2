@@ -87,6 +87,10 @@ const Sidebar: React.FC = () => {
 
   const outboundSubmenuItems = [
     { path: '/outboundorders', icon: ArrowUpCircle, label: 'Outbound-Order' },
+    { path: '/outboundsto', icon: ArrowUpCircle, label: 'Outbound-Sto' },
+    { path: '/outboundb2c', icon: ArrowUpCircle, label: 'Outbound-B2C' },
+    { path: '/outboundmonitoring', icon: ArrowUpCircle, label: 'Outbound-Monitoring' },
+    { path: '/outboundappsformat', icon: ArrowUpCircle, label: 'Outbound-AppsFormat' },
   ];
 
   const toggleSubmenu = (menu: keyof typeof openSubmenus) => {

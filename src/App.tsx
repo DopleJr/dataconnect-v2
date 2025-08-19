@@ -9,6 +9,10 @@ import StockOutbound from './pages/StockOutbound';
 import TraceTransaction from './pages/TraceTransaction';
 import InboundAllocation from './pages/InboundAllocation';
 import OutboundOrders from './pages/OutboundOrders';
+import OutboundSto from './pages/OutboundSto';
+import OutboundB2c from './pages/OutboundB2c';
+import OutboundMonitoring from './pages/OutboundMonitoring';
+import OutboundAppsFormat from './pages/OutboundAppsFormat';
 import DatabaseStatus from './components/DatabaseStatus';
 import Footer from './components/Footer';
 
@@ -29,6 +33,10 @@ function App() {
 
               <Route path="/inboundallocation" element={<InboundAllocation />} />
               <Route path="/outboundorders" element={<OutboundOrders />} />
+              <Route path="/outboundsto" element={<OutboundSto />} />
+              <Route path="/outboundmonitoring" element={<OutboundMonitoring />} />
+              <Route path="/outboundb2c" element={<OutboundB2c />} />
+              <Route path="/outboundappsformat" element={<OutboundAppsFormat />} />
             </Routes>
           </main>
           <DatabaseStatus />

@@ -21,7 +21,7 @@ router.get('/order-summary', async (req, res, next) => {
     // Base conditions
     whereConditions.push(`out1.BUSINESS_UNIT_ID = 'CID001683'`);
     whereConditions.push(`out2.MINIMUM_STATUS IN ('1000', '2090', '7200', '8000', '9000')`);
-    whereConditions.push(`out2.ORDER_TYPE IN ('TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM', 'B2B_C', 'B2B_A', 'B2B_MGR', 'B2B_M', 'TO_B2C')`);
+    whereConditions.push(`out2.ORDER_TYPE IN ('TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM','B2B_A','B2B_MGR','B2B_C','B2B_M','TO_B2C')`);
 
     // Date range filter
     if (startDate) {
@@ -50,27 +50,26 @@ router.get('/order-summary', async (req, res, next) => {
       SELECT
         DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ) AS CREATION_DATE,
         out2.ORDER_TYPE,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '1000' THEN out2.ORIGINAL_ORDER_ID END) AS Released_Ord,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '2090' THEN out2.ORIGINAL_ORDER_ID END) AS Allocated_Ord,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '7200' THEN out2.ORIGINAL_ORDER_ID END) AS Packed_Ord,
-        COUNT(DISTINCT CASE WHEN out2.MINIMUM_STATUS = '8000' THEN out2.ORIGINAL_ORDER_ID END) AS Shipped_Ord,
-        CAST( COUNT( DISTINCT out2.ORIGINAL_ORDER_ID) AS SIGNED ) AS Total_Order,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '1000' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Released_Qty,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '2090' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Allocated_Qty,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '7200' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Packed_Qty,
-        CAST(SUM(CASE WHEN out2.MINIMUM_STATUS = '8000' THEN out1.INITIAL_QUANTITY ELSE 0 END) AS SIGNED ) AS Shipped_Qty,
-        CAST( SUM(out1.INITIAL_QUANTITY) AS SIGNED ) AS Total_Qty
+        COUNT( DISTINCT CASE WHEN out2.MINIMUM_STATUS = '9000' THEN out2.EXT_DHL_CUST_ORD_REF END ) AS Cancelled_Ord,
+        COUNT( DISTINCT CASE WHEN out2.MINIMUM_STATUS = '1000' THEN out2.EXT_DHL_CUST_ORD_REF END ) AS Released_Ord,
+        COUNT( DISTINCT CASE WHEN out2.MINIMUM_STATUS = '2090' THEN out2.EXT_DHL_CUST_ORD_REF END ) AS Allocated_Ord,
+        COUNT( DISTINCT CASE WHEN out2.MINIMUM_STATUS = '7200' THEN out2.EXT_DHL_CUST_ORD_REF END ) AS Packed_Ord,
+        COUNT( DISTINCT CASE WHEN out2.MINIMUM_STATUS = '8000' THEN out2.EXT_DHL_CUST_ORD_REF END ) AS Shipped_Ord,
+        CAST( COUNT( DISTINCT out2.EXT_DHL_CUST_ORD_REF ) AS SIGNED ) AS Total_Order,
+        CAST( SUM( CASE WHEN out2.MINIMUM_STATUS = '1000' THEN out1.ORDERED_QUANTITY ELSE 0 END ) AS SIGNED ) AS Released_Qty,
+        CAST( SUM( CASE WHEN out2.MINIMUM_STATUS = '2090' THEN out1.ORDERED_QUANTITY ELSE 0 END ) AS SIGNED ) AS Allocated_Qty,
+        CAST( SUM( CASE WHEN out2.MINIMUM_STATUS = '7200' THEN out1.ORDERED_QUANTITY ELSE 0 END ) AS SIGNED ) AS Packed_Qty,
+        CAST( SUM( CASE WHEN out2.MINIMUM_STATUS = '8000' THEN out1.ORDERED_QUANTITY ELSE 0 END ) AS SIGNED ) AS Shipped_Qty,
+        CAST( SUM( out1.ORDERED_QUANTITY ) AS SIGNED ) AS Total_Qty  
       FROM
-        default_pickpack.ppk_olpn_detail out1
-        INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
-        INNER JOIN default_dcorder.dco_order_line out4 ON out2.ORIGINAL_ORDER_ID = out4.original_order_id 
-        AND out2.BUSINESS_UNIT_ID = out4.BUSINESS_UNIT_ID 
-        AND out1.ORDER_LINE_ID = out4.ORDER_LINE_ID
-        LEFT JOIN default_pickpack.ppk_olpn out3 ON out1.BUSINESS_UNIT_ID = out3.BUSINESS_UNIT_ID 
-        AND out1.OLPN_ID = out3.OLPN_ID 
+        default_dcorder.dco_original_order_line out1
+        INNER JOIN default_dcorder.dco_original_order out2 ON
+        out2.BUSINESS_UNIT_ID = out1.BUSINESS_UNIT_ID
+        #AND out2.EXT_DHL_CUST_ORD_REF = out1.ALT_ORIGINAL_ORDER_ID
+        AND out2.PK = out1.ORIGINAL_ORDER_PK
       ${whereClause}
       GROUP BY
-        DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ),
+        CREATION_DATE,
         out2.ORDER_TYPE
       ORDER BY 
         CREATION_DATE DESC,
@@ -85,16 +84,14 @@ router.get('/order-summary', async (req, res, next) => {
           DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ) AS CREATION_DATE,
           out2.ORDER_TYPE
         FROM
-          default_pickpack.ppk_olpn_detail out1
-          INNER JOIN default_dcorder.dco_original_order out2 ON out1.ORIGINAL_ORDER_ID = out2.ORIGINAL_ORDER_ID
-          INNER JOIN default_dcorder.dco_order_line out4 ON out2.ORIGINAL_ORDER_ID = out4.original_order_id 
-          AND out2.BUSINESS_UNIT_ID = out4.BUSINESS_UNIT_ID 
-          AND out1.ORDER_LINE_ID = out4.ORDER_LINE_ID
-          LEFT JOIN default_pickpack.ppk_olpn out3 ON out1.BUSINESS_UNIT_ID = out3.BUSINESS_UNIT_ID 
-          AND out1.OLPN_ID = out3.OLPN_ID 
+          default_dcorder.dco_original_order_line out1
+          INNER JOIN default_dcorder.dco_original_order out2 ON
+          out2.BUSINESS_UNIT_ID = out1.BUSINESS_UNIT_ID
+          #AND out2.EXT_DHL_CUST_ORD_REF = out1.ALT_ORIGINAL_ORDER_ID
+          AND out2.PK = out1.ORIGINAL_ORDER_PK 
         ${whereClause}
         GROUP BY
-          DATE_FORMAT( DATE_ADD( out2.CREATED_TIMESTAMP, INTERVAL 7 HOUR ), '%Y-%m-%d' ),
+          CREATION_DATE,
           out2.ORDER_TYPE
       ) as grouped_data
     `;
