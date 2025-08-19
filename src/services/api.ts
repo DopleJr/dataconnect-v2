@@ -179,7 +179,7 @@ export const getOrderSummary = async (params: {
 export const getOutboundStore = async (params: {
   startDate?: string;
   endDate?: string;
-  orderTypes?: string[];
+  shipToList?: string[];
   page?: number;
   limit?: number;
 }): Promise<{ data: any[]; total: number; page: number; totalPages: number }> => {
@@ -187,7 +187,7 @@ export const getOutboundStore = async (params: {
     const queryParams = {
       startDate: params.startDate,
       endDate: params.endDate,
-      orderTypes: params.orderTypes?.join(','),
+      shipToList: params.shipToList?.join(','),
       page: params.page || 1,
       limit: params.limit || 1000
     };

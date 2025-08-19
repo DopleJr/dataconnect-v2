@@ -37,10 +37,10 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
   const [totalRecords, setTotalRecords] = useState(0);
   const [sortField, setSortField] = useState<SortField>('ORDER_TYPE');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [selectedOrderTypes, setSelectedOrderTypes] = useState<string[]>([]);
+  const [selectedShipTos, setSelectedShipTos] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<string>('2025-08-01');
   const [endDate, setEndDate] = useState<string>(getCurrentDate());
-  const [showOrderTypeDropdown, setShowOrderTypeDropdown] = useState(false);
+  const [showShipToDropdown, setShowShipToDropdown] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
@@ -63,21 +63,27 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
     { key: 'STATUS_ORDER', label: 'Status', icon: Filter }
   ];
 
-  // Get unique values for filters
-  const uniqueOrderTypes = useMemo(() => {
-    // Define all possible order types
-    const allOrderTypes = [
-      'TO_B2B', 'B2C_SHP', 'B2C_ZLR', 'B2C_COM', 
-      'B2B_C', 'B2B_A', 'B2B_MGR', 'B2B_M', 'TO_B2C'
-    ];
-    
-    // Get order types from current data
-    const dataOrderTypes = [...new Set(data.map(item => item.ORDER_TYPE))];
-    
-    // Combine and deduplicate, keeping all possible types
-    const combinedTypes = [...new Set([...allOrderTypes, ...dataOrderTypes])];
-    
-    return combinedTypes.sort();
+  // Define available Ship-To values
+  const availableShipTos = [
+    '0000002001', '0000002002', '0000002003', '0000002004', '0000002005',
+    '0000002006', '0000002007', '0000002008', '0000002010', '0000002011',
+    '0000002012', '0000002013', '0000002014', '0000002015', '0000002016',
+    '0000002017', '0000002018', '0000002020', '0000002021', '0000002023',
+    '0000002024', '0000002025', '0000002026', '0000002028', '0000002029',
+    '0000002030', '0000002032', '0000002033', '0000002034', '0000002035',
+    '0000002036', '0000002037', '0000002038', '0000002040', '0000002041',
+    '0000002043', '0000002044', '0000002046', '0000002047', '0000002049',
+    '0000002050', '0000002051', '0000002052', '0000002053', '0000002055',
+    '0000002056', '0000002058', '0000002061', '0000002062', '0000002063',
+    '0000002064', '0000002065', '0000002067', '0000002068', '0000002070',
+    '0000002071', '0000002072'
+  ];
+
+  // Get unique Ship-To values from data and combine with predefined list
+  const uniqueShipTos = useMemo(() => {
+    const dataShipTos = [...new Set(data.map(item => item.SHIP_TO))];
+    const combinedShipTos = [...new Set([...availableShipTos, ...dataShipTos])];
+    return combinedShipTos.sort();
   }, [data]);
 
   // Fetch data from API
@@ -87,7 +93,7 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
       const response = await getOutboundStore({
         startDate: startDate || undefined,
         endDate: endDate || undefined,
-        orderTypes: selectedOrderTypes.length > 0 ? selectedOrderTypes : undefined,
+        shipToList: selectedShipTos.length > 0 ? selectedShipTos : undefined,
         page: 1,
         limit: 1000
       });
@@ -126,7 +132,7 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
     }, 3 * 60 * 1000); // 3 minutes in milliseconds
 
     return () => clearInterval(interval);
-  }, [startDate, endDate, selectedOrderTypes]);
+  }, [startDate, endDate, selectedShipTos]);
 
   // Refetch when filters change
   useEffect(() => {
@@ -135,7 +141,7 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
     }, 500); // Debounce API calls
 
     return () => clearTimeout(timeoutId);
-  }, [startDate, endDate, selectedOrderTypes]);
+  }, [startDate, endDate, selectedShipTos]);
 
   // Filter and sort data
   const processedData = useMemo(() => {
@@ -202,11 +208,11 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
     return status === 'OPEN' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
   };
 
-  const toggleOrderType = (orderType: string) => {
-    setSelectedOrderTypes(prev => 
-      prev.includes(orderType) 
-        ? prev.filter(type => type !== orderType)
-        : [...prev, orderType]
+  const toggleShipTo = (shipTo: string) => {
+    setSelectedShipTos(prev => 
+      prev.includes(shipTo) 
+        ? prev.filter(s => s !== shipTo)
+        : [...prev, shipTo]
     );
   };
 
@@ -235,12 +241,12 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
   };
 
   const clearAllFilters = () => {
-    setSelectedOrderTypes([]);
+    setSelectedShipTos([]);
     setStartDate('2025-08-01');
     setEndDate(getCurrentDate());
   };
 
-  const hasActiveFilters = selectedOrderTypes.length > 0 || 
+  const hasActiveFilters = selectedShipTos.length > 0 || 
     startDate !== '2025-08-01' || 
     endDate !== getCurrentDate();
 
@@ -565,35 +571,35 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
               </div>
             </div>
 
-            {/* Order Type Multi-Select */}
+            {/* Ship-To Multi-Select */}
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-600">Order Types</label>
+              <label className="text-xs font-medium text-gray-600">Ship To</label>
               <div className="relative">
                 <button
-                  onClick={() => setShowOrderTypeDropdown(!showOrderTypeDropdown)}
+                  onClick={() => setShowShipToDropdown(!showShipToDropdown)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-green-500 focus:border-green-500 flex items-center justify-between"
                 >
                   <span className="truncate">
-                    {selectedOrderTypes.length === 0 
-                      ? 'All Order Types' 
-                      : `${selectedOrderTypes.length} selected`
+                    {selectedShipTos.length === 0 
+                      ? 'All Ship To' 
+                      : `${selectedShipTos.length} selected`
                     }
                   </span>
                   <ChevronDown className="h-4 w-4 text-gray-400" />
                 </button>
                 
-                {showOrderTypeDropdown && (
+                {showShipToDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {uniqueOrderTypes.map(type => (
-                      <label key={type} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                    {uniqueShipTos.map(shipTo => (
+                      <label key={shipTo} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={selectedOrderTypes.includes(type)}
-                          onChange={() => toggleOrderType(type)}
+                          checked={selectedShipTos.includes(shipTo)}
+                          onChange={() => toggleShipTo(shipTo)}
                           className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
                         />
-                        <span className={`text-sm px-2 py-1 rounded-full ${getOrderTypeColor(type)}`}>
-                          {type}
+                        <span className="text-sm font-mono">
+                          {shipTo}
                         </span>
                       </label>
                     ))}
@@ -655,11 +661,11 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-600">Active Filters</label>
               <div className="flex flex-wrap gap-2">
-                {selectedOrderTypes.map(type => (
-                  <span key={type} className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                    {type}
+                {selectedShipTos.map(shipTo => (
+                  <span key={shipTo} className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-mono">
+                    {shipTo}
                     <button
-                      onClick={() => toggleOrderType(type)}
+                      onClick={() => toggleShipTo(shipTo)}
                       className="ml-2 hover:text-green-600"
                     >
                       <X className="h-3 w-3" />
@@ -688,11 +694,11 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
       </div>
 
       {/* Close dropdowns when clicking outside */}
-      {(showOrderTypeDropdown || showColumnDropdown) && (
+      {(showShipToDropdown || showColumnDropdown) && (
         <div 
           className="fixed inset-0 z-5" 
           onClick={() => {
-            setShowOrderTypeDropdown(false);
+            setShowShipToDropdown(false);
             setShowColumnDropdown(false);
           }}
         />
@@ -761,7 +767,11 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
                       <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(row[column.key as keyof OutboundStoreData] as string)}`}>
                         {row[column.key as keyof OutboundStoreData]}
                       </span>
-                    ) : column.key === 'SHIP_TO' || column.key === 'STORENAME' ? (
+                    ) : column.key === 'SHIP_TO' ? (
+                      <div className="text-sm font-mono text-gray-900">
+                        {row[column.key as keyof OutboundStoreData]}
+                      </div>
+                    ) : column.key === 'STORENAME' ? (
                       <div className="text-sm font-medium text-gray-900">
                         {row[column.key as keyof OutboundStoreData]}
                       </div>

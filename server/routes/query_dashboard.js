@@ -141,7 +141,7 @@ router.get('/outbound-store', async (req, res, next) => {
     const { 
       startDate = '', 
       endDate = '', 
-      orderTypes = '',
+      shipToList = '',
       page = 1,
       limit = 1000
     } = req.query;
@@ -170,13 +170,13 @@ router.get('/outbound-store', async (req, res, next) => {
       queryParams.push(`${endDate} 23:59:59`);
     }
 
-    // Order type filter
-    if (orderTypes) {
-      const types = orderTypes.split(',').map(type => type.trim()).filter(type => type);
-      if (types.length > 0) {
+    // Ship-To filter
+    if (shipToList) {
+      const shipTos = shipToList.split(',').map(shipTo => shipTo.trim()).filter(shipTo => shipTo);
+      if (shipTos.length > 0) {
         const placeholders = types.map(() => '?').join(',');
-        whereConditions.push(`out2.ORDER_TYPE IN (${placeholders})`);
-        queryParams.push(...types);
+        whereConditions.push(`out2.EXT_DHL_CUSTOMER_SHIP_TO IN (${placeholders})`);
+        queryParams.push(...shipTos);
       }
     }
 
