@@ -311,15 +311,7 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
       setIsCapturing(true);
       
       // Find the dashboard element
-      let dashboardElement = document.getElementById('outbound-store-dashboard-container');
-      
-      if (!dashboardElement) {
-        dashboardElement = document.querySelector('[data-outbound-store-dashboard="true"]') as HTMLElement;
-      }
-      
-      if (!dashboardElement) {
-        dashboardElement = document.querySelector('.bg-white.rounded-xl.shadow-lg') as HTMLElement;
-      }
+      const dashboardElement = document.getElementById('outbound-store-dashboard-container');
       
       if (!dashboardElement) {
         console.error('Dashboard element not found');
@@ -327,63 +319,64 @@ const DashboardOutboundStoreTable: React.FC<DashboardOutboundStoreTableProps> = 
         return;
       }
 
-      // Ensure element is in view
-      dashboardElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-      window.scrollTo(0, 0);
+      // Scroll to top and ensure element is visible
+      dashboardElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       
-      // Wait for any animations or loading to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for scroll and any animations to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Capture with optimized settings
       const canvas = await html2canvas(dashboardElement, {
-        scale: 2,
+        scale: 1.5,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
-        foreignObjectRendering: true,
+        foreignObjectRendering: false,
         logging: false,
         width: dashboardElement.offsetWidth,
         height: dashboardElement.offsetHeight,
-        x: 0,
-        y: 0,
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY
+        ignoreElements: (element) => {
+          // Ignore dropdowns and overlays
+          return element.classList?.contains('fixed') || 
+                 element.classList?.contains('absolute') ||
+                 element.getAttribute('role') === 'tooltip';
+        }
       });
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         throw new Error('Failed to capture dashboard - canvas is empty');
       }
 
-      // Try clipboard first, then fallback to download
-      try {
-        if (navigator.clipboard && 'write' in navigator.clipboard) {
-          canvas.toBlob(async (blob) => {
-            if (blob) {
-              try {
-                await navigator.clipboard.write([
-                  new ClipboardItem({ 'image/png': blob })
-                ]);
-                toast.success('Dashboard copied to clipboard!', {
-                  duration: 3000,
-                  icon: '📋'
-                });
-              } catch (clipboardError) {
-                console.warn('Clipboard failed, downloading instead:', clipboardError);
-                downloadImage(canvas);
-              }
-            }
-          }, 'image/png', 0.95);
-        } else {
-          downloadImage(canvas);
+      // Convert to blob and try clipboard first
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('Failed to create image');
+          return;
         }
-      } catch (error) {
-        console.warn('Clipboard not supported, downloading instead');
+
+        // Try clipboard first
+        if (navigator.clipboard && 'write' in navigator.clipboard) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            toast.success('Dashboard copied to clipboard!', {
+              duration: 3000,
+              icon: '📋'
+            });
+            return;
+          } catch (clipboardError) {
+            console.warn('Clipboard failed, downloading instead:', clipboardError);
+          }
+        }
+        
+        // Fallback to download
         downloadImage(canvas);
-      }
+      }, 'image/png', 0.9);
       
     } catch (error) {
       console.error('Failed to capture dashboard:', error);
-      toast.error(`Failed to capture dashboard: ${error.message}`);
+      toast.error('Failed to capture dashboard. Please try again.');
     } finally {
       setIsCapturing(false);
     }
