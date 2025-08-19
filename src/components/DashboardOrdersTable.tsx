@@ -340,18 +340,8 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
     try {
       setIsCapturing(true);
       
-      // Find the dashboard element more reliably
-      let dashboardElement = document.getElementById('dashboard-container');
-      
-      if (!dashboardElement) {
-        // Fallback to the main container
-        dashboardElement = document.querySelector('[data-dashboard="true"]') as HTMLElement;
-      }
-      
-      if (!dashboardElement) {
-        // Last fallback - find by class
-        dashboardElement = document.querySelector('.bg-white.rounded-xl.shadow-lg') as HTMLElement;
-      }
+      // Find the dashboard element
+      const dashboardElement = document.getElementById('dashboard-container');
       
       if (!dashboardElement) {
         console.error('Dashboard element not found');
@@ -359,119 +349,27 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
         return;
       }
 
-      // Ensure element is in view
-      dashboardElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-      window.scrollTo(0, 0);
+      // Scroll to top and ensure element is visible
+      dashboardElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       
-      // Wait for any animations or loading to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for scroll and any animations to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Capture with optimized settings
       const canvas = await html2canvas(dashboardElement, {
-        scale: 2,
+        scale: 1.5,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
-        foreignObjectRendering: true,
-        logging: true,
+        foreignObjectRendering: false,
+        logging: false,
         width: dashboardElement.offsetWidth,
         height: dashboardElement.offsetHeight,
-        x: 0,
-        y: 0,
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY,
-        onclone: (clonedDoc) => {
-          // Find the cloned element
-          const clonedElement = clonedDoc.getElementById('dashboard-container') || 
-                               clonedDoc.querySelector('[data-dashboard="true"]') ||
-                               clonedDoc.querySelector('.bg-white.rounded-xl.shadow-lg');
-          
-          if (clonedElement) {
-            const element = clonedElement as HTMLElement;
-            
-            // Ensure the main container is visible
-            element.style.visibility = 'visible';
-            element.style.display = 'block';
-            element.style.backgroundColor = '#ffffff';
-            element.style.position = 'relative';
-            element.style.zIndex = '1';
-            
-            // Apply styles to all child elements
-            const allElements = element.querySelectorAll('*');
-            allElements.forEach(el => {
-              const childEl = el as HTMLElement;
-              
-              // Make sure everything is visible
-              if (childEl.style.display === 'none') {
-                childEl.style.display = 'block';
-              }
-              childEl.style.visibility = 'visible';
-              
-              // Force specific styles for better rendering
-              if (childEl.classList.contains('bg-white')) {
-                childEl.style.backgroundColor = '#ffffff';
-              }
-              if (childEl.classList.contains('bg-gray-50')) {
-                childEl.style.backgroundColor = '#f9fafb';
-              }
-              if (childEl.classList.contains('bg-gray-100')) {
-                childEl.style.backgroundColor = '#f3f4f6';
-              }
-              if (childEl.classList.contains('text-white')) {
-                childEl.style.color = '#ffffff';
-              }
-              if (childEl.classList.contains('text-gray-900')) {
-                childEl.style.color = '#111827';
-              }
-              if (childEl.classList.contains('text-gray-800')) {
-                childEl.style.color = '#1f2937';
-              }
-              if (childEl.classList.contains('text-gray-700')) {
-                childEl.style.color = '#374151';
-              }
-              if (childEl.classList.contains('text-gray-600')) {
-                childEl.style.color = '#4b5563';
-              }
-              if (childEl.classList.contains('text-gray-500')) {
-                childEl.style.color = '#6b7280';
-              }
-              
-              // Handle gradient backgrounds
-              if (childEl.classList.contains('bg-gradient-to-r') && 
-                  childEl.classList.contains('from-blue-600') && 
-                  childEl.classList.contains('to-blue-700')) {
-                childEl.style.background = 'linear-gradient(to right, #2563eb, #1d4ed8)';
-                childEl.style.color = '#ffffff';
-              }
-              
-              // Handle borders
-              if (childEl.classList.contains('border-gray-200')) {
-                childEl.style.borderColor = '#e5e7eb';
-              }
-              if (childEl.classList.contains('border-gray-100')) {
-                childEl.style.borderColor = '#f3f4f6';
-              }
-              
-              // Handle shadows
-              if (childEl.classList.contains('shadow-lg')) {
-                childEl.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)';
-              }
-              if (childEl.classList.contains('shadow')) {
-                childEl.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)';
-              }
-              
-              // Handle rounded corners
-              if (childEl.classList.contains('rounded-xl')) {
-                childEl.style.borderRadius = '0.75rem';
-              }
-              if (childEl.classList.contains('rounded-lg')) {
-                childEl.style.borderRadius = '0.5rem';
-              }
-              if (childEl.classList.contains('rounded-full')) {
-                childEl.style.borderRadius = '9999px';
-              }
-            });
-          }
+        ignoreElements: (element) => {
+          // Ignore dropdowns and overlays
+          return element.classList?.contains('fixed') || 
+                 element.classList?.contains('absolute') ||
+                 element.getAttribute('role') === 'tooltip';
         }
       });
 
@@ -479,36 +377,36 @@ const DashboardOrdersTable: React.FC<DashboardOrdersTableProps> = ({
         throw new Error('Failed to capture dashboard - canvas is empty');
       }
 
-      // Try clipboard first, then fallback to download
-      try {
-        if (navigator.clipboard && 'write' in navigator.clipboard) {
-          canvas.toBlob(async (blob) => {
-            if (blob) {
-              try {
-                await navigator.clipboard.write([
-                  new ClipboardItem({ 'image/png': blob })
-                ]);
-                toast.success('Dashboard copied to clipboard!', {
-                  duration: 3000,
-                  icon: '📋'
-                });
-              } catch (clipboardError) {
-                console.warn('Clipboard failed, downloading instead:', clipboardError);
-                downloadImage(canvas);
-              }
-            }
-          }, 'image/png', 0.95);
-        } else {
-          downloadImage(canvas);
+      // Convert to blob and try clipboard first
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('Failed to create image');
+          return;
         }
-      } catch (error) {
-        console.warn('Clipboard not supported, downloading instead');
+
+        // Try clipboard first
+        if (navigator.clipboard && 'write' in navigator.clipboard) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            toast.success('Dashboard copied to clipboard!', {
+              duration: 3000,
+              icon: '📋'
+            });
+            return;
+          } catch (clipboardError) {
+            console.warn('Clipboard failed, downloading instead:', clipboardError);
+          }
+        }
+        
+        // Fallback to download
         downloadImage(canvas);
-      }
+      }, 'image/png', 0.9);
       
     } catch (error) {
       console.error('Failed to capture dashboard:', error);
-      toast.error(`Failed to capture dashboard: ${error.message}`);
+      toast.error('Failed to capture dashboard. Please try again.');
     } finally {
       setIsCapturing(false);
     }
