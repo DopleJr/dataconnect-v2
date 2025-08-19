@@ -174,7 +174,7 @@ router.get('/outbound-store', async (req, res, next) => {
     if (shipToList) {
       const shipTos = shipToList.split(',').map(shipTo => shipTo.trim()).filter(shipTo => shipTo);
       if (shipTos.length > 0) {
-        const placeholders = types.map(() => '?').join(',');
+        const placeholders = shipTos.map(() => '?').join(',');
         whereConditions.push(`out2.EXT_DHL_CUSTOMER_SHIP_TO IN (${placeholders})`);
         queryParams.push(...shipTos);
       }
